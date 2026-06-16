@@ -45,12 +45,14 @@
   .status-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80;box-shadow:0 0 6px #4ADE80}
 
   /* LAYOUT */
-  .app{padding-top:56px;min-height:100vh}
-  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .app{padding-top:56px;height:100vh;overflow:hidden}
+  .layout{display:flex;height:calc(100vh - 56px);overflow:hidden}
 
   /* SIDEBAR */
-  .sidebar{width:240px;background:var(--navy);color:white;flex-shrink:0;display:none;flex-direction:column}
+  .sidebar{width:240px;background:var(--navy);color:white;flex-shrink:0;display:none;flex-direction:column;height:100%;overflow-y:auto;overflow-x:hidden}
   .sidebar.active{display:flex}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px}
   .sb-brand-area{padding:20px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.08)}
   .sb-brand-name{font-size:15px;font-weight:600;color:white;letter-spacing:-0.3px}
   .sb-brand-name span{color:var(--blue-light)}
@@ -71,7 +73,7 @@
   .u-role{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px}
 
   /* MAIN */
-  .main{flex:1;padding:26px 32px 60px;min-width:0;overflow-x:hidden}
+  .main{flex:1;padding:26px 32px 60px;min-width:0;overflow-x:hidden;overflow-y:auto;height:100%}
   .page{display:none;animation:fade 0.2s ease}
   .page.active{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -123,6 +125,8 @@
   .form-textarea{min-height:84px;resize:vertical;font-family:inherit}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+  .grid-sidebar-right{display:grid;grid-template-columns:1fr 420px;gap:16px}
   .form-help{font-size:11px;color:var(--g500);margin-top:5px}
   .form-section{margin-bottom:18px}
   .form-section-title{font-size:13px;font-weight:600;color:var(--g700);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)}
@@ -157,14 +161,17 @@
   .pill-cred{background:var(--indigo-light);color:var(--indigo)}
 
   /* TABLES */
-  .table-wrap{background:white;border:1px solid var(--g200);border-radius:10px;overflow:hidden;margin-bottom:14px}
-  .data-table{width:100%;border-collapse:collapse}
+  .table-wrap{background:white;border:1px solid var(--g200);border-radius:10px;overflow-x:auto;overflow-y:hidden;margin-bottom:14px;-webkit-overflow-scrolling:touch}
+  .data-table{width:100%;border-collapse:collapse;min-width:520px}
   .data-table th{text-align:left;padding:12px 14px;font-size:10.5px;text-transform:uppercase;color:var(--g500);font-weight:700;letter-spacing:0.6px;border-bottom:1px solid var(--g200);background:var(--g50)}
   .data-table td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--g100);color:var(--g700)}
   .data-table tr:last-child td{border-bottom:none}
   .data-table tbody tr:hover{background:var(--g50)}
-  .td-actions{text-align:right;white-space:nowrap}
+  .td-actions{text-align:right;white-space:nowrap;position:sticky;right:0;background:white;box-shadow:-4px 0 8px rgba(0,0,0,0.04)}
   .td-actions .btn{margin-left:6px}
+  .data-table thead th:last-child{position:sticky;right:0;background:var(--g50);box-shadow:-4px 0 8px rgba(0,0,0,0.04)}
+  [data-theme="dark"] .td-actions{background:var(--surface-1)}
+  [data-theme="dark"] .data-table thead th:last-child{background:var(--surface-2)}
 
   /* JOB CARDS */
   .job-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
@@ -333,13 +340,60 @@
     .sidebar{width:200px}
     .main{padding:22px 20px 50px}
     .doc-review{grid-template-columns:1fr}
+    .doc-info{grid-template-columns:1fr}
+    .form-row{grid-template-columns:1fr}
+    .form-row-3{grid-template-columns:1fr 1fr}
+    .chat-layout{grid-template-columns:220px 1fr;height:480px}
+    .stats-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    .grid-2-1{grid-template-columns:1fr}
+    .grid-sidebar-right{grid-template-columns:1fr}
   }
   @media (max-width: 680px){
-    .sidebar{display:none !important}
+    .form-row,.form-row-3{grid-template-columns:1fr}
+    .chat-layout{grid-template-columns:1fr;height:auto}
+    .chat-list{border-right:none;border-bottom:1px solid var(--g200);max-height:220px}
+    .stats-grid{grid-template-columns:1fr 1fr}
+    .summary-row{flex-direction:column}
+    .summary-tile{min-width:unset}
+    .dm-kv{grid-template-columns:1fr;gap:4px}
+    .cal-grid{gap:3px}
+    .grid-2-1,.grid-sidebar-right{grid-template-columns:1fr}
+    .doc-info,.doc-info{grid-template-columns:1fr}
+  }
+  /* Hamburger button — hidden on desktop */
+  .mob-hamburger{display:none;background:none;border:none;cursor:pointer;color:white;font-size:22px;padding:4px 8px;line-height:1;margin-right:4px}
+
+  /* Sidebar drawer backdrop */
+  .sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:149;backdrop-filter:blur(2px)}
+  .sb-backdrop.open{display:block}
+
+  /* Portrait mobile — drawer sidebar */
+  @media (max-width: 680px) and (orientation: portrait){
+    .mob-hamburger{display:block}
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;z-index:150;
+      width:260px;height:100vh;
+      transform:translateX(-100%);transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
+      display:flex !important;box-shadow:4px 0 24px rgba(0,0,0,0.25)
+    }
+    .sidebar.mob-open{transform:translateX(0)}
     .main{padding:18px 16px 90px}
     .role-btns .role-btn{padding:5px 10px;font-size:11px}
     .brand-text{font-size:14px}
     .mobile-nav{display:flex !important}
+  }
+  /* Landscape mobile — collapse sidebar to icon rail */
+  @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px){
+    .sidebar{width:58px;overflow:hidden}
+    .sidebar .sb-brand-area,.sidebar .sb-label,.sidebar .u-name,.sidebar .u-role,.sidebar .sb-brand-name,.sidebar .sb-brand-tag{display:none}
+    .sidebar .nav-item{justify-content:center;padding:10px 0;gap:0}
+    .sidebar .nav-item span:not(.nav-icon):not(.nav-badge){display:none}
+    .sidebar .nav-icon{width:100%;text-align:center;font-size:16px}
+    .sidebar .sb-footer{padding:10px 0;display:flex;justify-content:center}
+    .sidebar .avatar{width:30px;height:30px;font-size:11px}
+    .sidebar .user-chip > div:last-child{display:none}
+    .main{padding:14px 12px 20px}
+    .mobile-nav{display:none !important}
   }
 
   /* ===== V2: APPLICATION STEPPER ===== */
@@ -974,7 +1028,9 @@
 </div>
 
 <!-- TOP ROLE BAR -->
+<div class="sb-backdrop" id="sb-backdrop" onclick="App.closeMobSidebar()"></div>
 <div class="role-bar">
+  <button class="mob-hamburger" id="mob-hamburger" onclick="App.toggleMobSidebar()" aria-label="Open menu">&#9776;</button>
   <div class="brand">
     <div class="brand-mark"><span class="ps-logo on-light"></span></div>
     <div>
@@ -1081,6 +1137,7 @@
     <div class="sb-label">Operations</div>
     <div class="nav-item active" data-page="admin-dashboard" onclick="App.setPage('admin-dashboard')"><span class="nav-icon">&#9638;</span>Dashboard</div>
     <div class="nav-item" data-page="admin-queue" onclick="App.setPage('admin-queue')"><span class="nav-icon">&#128203;</span>Verification Queue<span class="nav-badge" id="badge-admin-queue">7</span></div>
+    <div class="nav-item" onclick="InviteLink.openModal()"><span class="nav-icon">&#128231;</span>Send Invite Link</div>
     <div class="nav-item" data-page="admin-jobs" onclick="App.setPage('admin-jobs')"><span class="nav-icon">&#128188;</span>Job Management</div>
     <div class="nav-item" data-page="admin-professionals" onclick="App.setPage('admin-professionals')"><span class="nav-icon">&#128101;</span>Professionals</div>
     <div class="nav-item" data-page="admin-facilities" onclick="App.setPage('admin-facilities')"><span class="nav-icon">&#127970;</span>Facilities</div>
@@ -1570,7 +1627,7 @@
     <div class="stat"><div class="stat-label">Verified facilities</div><div class="stat-value">47</div><div class="stat-delta">+1 this week</div></div>
     <div class="stat"><div class="stat-label">Avg verification time</div><div class="stat-value">8h</div><div class="stat-delta">-2h vs last week</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+  <div class="grid-2-1">
     <div class="card">
       <div class="card-title">Recent admin activity <a onclick="App.setPage('admin-logs')" style="font-size:12px;color:var(--blue);cursor:pointer;font-weight:600">View all logs &rarr;</a></div>
       <table class="data-table" style="margin:-20px;width:calc(100% + 40px)">
@@ -1860,18 +1917,26 @@
 <!-- ============== ADMIN: ADMIN USERS ============== -->
 <div class="page" id="admin-users">
   <div class="page-head"><div><div class="page-title">Admin users</div><div class="page-sub">Only Super Admin can manage this list.</div></div>
-    <div class="page-head-right"><button class="btn btn-primary" onclick="Actions.editAdmin('', this)">&#10133; Add admin</button></div>
+    <div class="page-head-right"><button class="btn btn-primary" onclick="InviteLink.openModal()">&#128231; Send invite link</button></div>
   </div>
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Admin</th><th>Role</th><th>Last login</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px">SA</div><div><div style="font-weight:600">Super Admin</div><div style="color:var(--g500);font-size:11px">admin@properstaffing.com</div></div></div></td><td><span class="badge badge-active">Super Admin</span></td><td>Just now</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Super Admin', this)">Edit</button></td></tr>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-green" style="width:30px;height:30px;font-size:11px">SK</div><div><div style="font-weight:600">Sarah Kim</div><div style="color:var(--g500);font-size:11px">sarah@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>2 hours ago</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Sarah Kim', this)">Edit</button></td></tr>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-amber" style="width:30px;height:30px;font-size:11px">MR</div><div><div style="font-weight:600">Mike Rivera</div><div style="color:var(--g500);font-size:11px">mike@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>Yesterday</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Mike Rivera', this)">Edit</button></td></tr>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--g400)">JL</div><div><div style="font-weight:600">Jamie Lee</div><div style="color:var(--g500);font-size:11px">jamie@properstaffing.com</div></div></div></td><td><span class="pill">Support Admin</span></td><td>4 days ago</td><td><span class="badge badge-paused">Suspended</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Jamie Lee', this)">Edit</button></td></tr>
-      </tbody>
-    </table>
+
+  <!-- Pending admin invites — shown when there are signups awaiting approval -->
+  <div id="admin-users-pending" style="display:none"></div>
+
+  <!-- Active admins table -->
+  <div id="admin-users-active">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:8px">Active admins</div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Admin</th><th>Role</th><th>Last login</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px">SA</div><div><div style="font-weight:600">Super Admin</div><div style="color:var(--g500);font-size:11px">admin@properstaffing.com</div></div></div></td><td><span class="badge badge-active">Super Admin</span></td><td>Just now</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Super Admin', this)">Edit</button></td></tr>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-green" style="width:30px;height:30px;font-size:11px">SK</div><div><div style="font-weight:600">Sarah Kim</div><div style="color:var(--g500);font-size:11px">sarah@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>2 hours ago</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Sarah Kim', this)">Edit</button></td></tr>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-amber" style="width:30px;height:30px;font-size:11px">MR</div><div><div style="font-weight:600">Mike Rivera</div><div style="color:var(--g500);font-size:11px">mike@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>Yesterday</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Mike Rivera', this)">Edit</button></td></tr>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--g400)">JL</div><div><div style="font-weight:600">Jamie Lee</div><div style="color:var(--g500);font-size:11px">jamie@properstaffing.com</div></div></div></td><td><span class="pill">Support Admin</span></td><td>4 days ago</td><td><span class="badge badge-paused">Suspended</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Jamie Lee', this)">Edit</button></td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -1898,6 +1963,7 @@
       <option value="Credential">Credential edits</option>
       <option value="Job">Job postings</option>
       <option value="Admin">Admin accounts</option>
+      <option value="Invite">Invites</option>
     </select>
     <select class="form-select" style="max-width:180px" id="logs-filter-admin" onchange="ActivityLog.filter()">
       <option value="all">All admins</option>
@@ -1909,8 +1975,8 @@
     <span id="logs-match-count" style="font-size:12px;color:var(--g500);margin-left:4px"></span>
   </div>
   <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Timestamp</th><th>Admin</th><th>Category</th><th>Action</th><th>Target</th></tr></thead>
+    <table class="data-table" id="logs-table">
+      <thead id="logs-thead"><tr><th>Timestamp</th><th>Admin</th><th>Category</th><th>Action</th><th>Target</th></tr></thead>
       <tbody id="logs-tbody"></tbody>
     </table>
   </div>
@@ -1982,7 +2048,7 @@
   <div class="page-head"><div><div class="page-title">CNA — Overnight</div><div class="page-sub">Sunny Care Center · Today 7:00pm – 7:00am</div></div>
     <div class="page-head-right"><span class="badge badge-active">Confirmed</span></div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 420px;gap:16px" id="shift-detail-grid">
+  <div class="grid-sidebar-right" id="shift-detail-grid">
     <div>
       <div class="card">
         <div class="card-title">Shift logistics</div>
@@ -2254,6 +2320,20 @@
   </div>
 </div>
 
+<!-- ===================== INVITE SIGNUP PAGE ===================== -->
+<div class="page" id="invite-signup" style="display:none;max-width:520px;margin:60px auto;padding:0 16px">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:28px;margin-bottom:8px">&#128231;</div>
+    <div style="font-size:22px;font-weight:700;color:var(--navy)" id="invite-signup-title">You've been invited</div>
+    <div style="font-size:14px;color:var(--g500);margin-top:6px" id="invite-signup-sub">Create your account to get started</div>
+  </div>
+  <div style="background:white;border:1px solid var(--g200);border-radius:14px;padding:28px 28px 24px">
+    <div id="invite-signup-fields"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="InviteLink.submitSignup()">Create account &amp; submit for review</button>
+    <div style="font-size:11.5px;color:var(--g400);text-align:center;margin-top:14px">Your account will be reviewed by a Proper Staffing admin before you can sign in.</div>
+  </div>
+</div>
+
 </main>
 </div>
 </div>
@@ -2506,6 +2586,18 @@ const App = {
     if(typeof Badges !== 'undefined') Badges.syncAll();
     setTimeout(() => Agreements.maybeShow(user.role), 350);
   },
+  toggleMobSidebar(){
+    const sb = document.querySelector('.sidebar.active');
+    const bd = document.getElementById('sb-backdrop');
+    if(!sb) return;
+    const open = sb.classList.toggle('mob-open');
+    if(bd) bd.classList.toggle('open', open);
+  },
+  closeMobSidebar(){
+    document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('mob-open'));
+    const bd = document.getElementById('sb-backdrop');
+    if(bd) bd.classList.remove('open');
+  },
 
   async logout(){
     await this._post('/api/auth/logout', {});
@@ -2557,6 +2649,7 @@ const App = {
     this.page = page;
     document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === page));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+    this.closeMobSidebar();
     window.scrollTo({top:0,behavior:'instant'});
     // RULE: opening an inbox clears its unread badge
     if(page === 'para-messages' && typeof Badges !== 'undefined') Badges.clearMessages();
@@ -4518,7 +4611,7 @@ const AdminShiftMgr = {
         </div>
         <div class="asm-edit-form${isEditing?' show':''}" id="asm-ef-${i}">
           <div style="font-size:13px;font-weight:600;color:var(--g800);margin-bottom:12px">Edit shift details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="form-row" style="margin-bottom:12px">
             <div><label class="form-label" style="font-size:12px">Pay rate ($/hr)</label><input class="form-input" id="asm-edit-pay-${i}" type="number" value="${s.pay}"/></div>
             <div><label class="form-label" style="font-size:12px">Shift time</label><input class="form-input" id="asm-edit-time-${i}" value="${s.shift}"/></div>
           </div>
@@ -5031,6 +5124,7 @@ const ActivityLog = {
     'Credential':'lb-credential',
     'Job'       :'lb-job',
     'Admin'     :'lb-admin',
+    'Invite'    :'lb-default',
   },
 
   _now(){
@@ -5068,13 +5162,49 @@ const ActivityLog = {
 
   render(){
     const tbody = document.getElementById('logs-tbody');
+    const thead = document.getElementById('logs-thead');
     if(!tbody) return;
-    const catF   = this._filterCat;
-    const admF   = this._filterAdmin;
-    const dateF  = (document.getElementById('logs-filter-date')||{}).value||'';
+    const catF  = this._filterCat;
+    const admF  = this._filterAdmin;
+    const dateF = (document.getElementById('logs-filter-date')||{}).value||'';
+
+    // Invite view — delegate to InviteActivityLog data
+    if(catF === 'Invite'){
+      if(thead) thead.innerHTML = '<tr><th>Recipient</th><th>Type</th><th>Sent by</th><th>Date sent</th><th>Status</th><th></th></tr>';
+      const statusBadge = s => ({
+        pending:  '<span class="badge badge-pending">Pending</span>',
+        accepted: '<span class="badge badge-verified">Accepted</span>',
+        expired:  '<span class="badge" style="background:var(--g200);color:var(--g600)">Expired</span>',
+      }[s] || s);
+      let invites = typeof InviteActivityLog !== 'undefined' ? InviteActivityLog.items : [];
+      if(admF !== 'all') invites = invites.filter(i => i.sentBy.toLowerCase().includes(admF.toLowerCase()));
+      tbody.innerHTML = invites.length
+        ? invites.map(i => `
+            <tr>
+              <td style="font-weight:600">${i.email}</td>
+              <td>${i.label}</td>
+              <td style="color:var(--g600)">${i.sentBy}</td>
+              <td style="white-space:nowrap;color:var(--g600)">${i.date} <span style="color:var(--g400);font-size:11.5px">${i.time}</span></td>
+              <td>${statusBadge(i.status)}</td>
+              <td class="td-actions">
+                ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.resend('${i.email}','${i.type}','${i.label}')">Resend</button>`:''}
+                ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.copyLink('${i.link||''}','${i.token}','${i.type}')">Copy link</button>`:''}
+              </td>
+            </tr>`).join('')
+        : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No invite records found.</td></tr>`;
+      const sub = document.getElementById('logs-sub');
+      const pending = invites.filter(i=>i.status==='pending').length;
+      if(sub) sub.textContent = `${invites.length} invite${invites.length!==1?'s':''} · ${pending} pending · exportable as CSV`;
+      const mc = document.getElementById('logs-match-count');
+      if(mc) mc.textContent = '';
+      return;
+    }
+
+    // Standard log view
+    if(thead) thead.innerHTML = '<tr><th>Timestamp</th><th>Admin</th><th>Category</th><th>Action</th><th>Target</th></tr>';
     const show = this.entries.filter(e =>
-      (catF   === 'all' || e.cat.toLowerCase().includes(catF.toLowerCase())) &&
-      (admF   === 'all' || e.admin.toLowerCase().includes(admF.toLowerCase())) &&
+      (catF === 'all' || e.cat.toLowerCase().includes(catF.toLowerCase())) &&
+      (admF === 'all' || e.admin.toLowerCase().includes(admF.toLowerCase())) &&
       (!dateF || e.ts.startsWith(dateF))
     );
     const badgeClass = cat => this._catBadge[cat] || 'lb-default';
@@ -5088,7 +5218,6 @@ const ActivityLog = {
             <td style="color:var(--g600)">${e.target}</td>
           </tr>`).join('')
       : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No log entries match this filter.</td></tr>`;
-
     const sub = document.getElementById('logs-sub');
     if(sub) sub.textContent = `${this.entries.length} total entries${show.length !== this.entries.length ? ` · ${show.length} shown` : ''} · exportable as CSV`;
     const mc = document.getElementById('logs-match-count');
@@ -5126,10 +5255,18 @@ const ActivityLog = {
   },
 
   exportCSV(){
-    const header = 'Timestamp,Admin,Role,Category,Action,Target\n';
-    const rows = this.entries.map(e =>
-      `"${e.ts}","${e.admin}","${e.role}","${e.cat}","${e.action}","${e.target}"`
-    ).join('\n');
+    let header, rows;
+    if(this._filterCat === 'Invite' && typeof InviteActivityLog !== 'undefined'){
+      header = 'Recipient,Type,Sent By,Date,Time,Status,Token\n';
+      rows = InviteActivityLog.items.map(i =>
+        `"${i.email}","${i.label}","${i.sentBy}","${i.date}","${i.time}","${i.status}","${i.token}"`
+      ).join('\n');
+    } else {
+      header = 'Timestamp,Admin,Role,Category,Action,Target\n';
+      rows = this.entries.map(e =>
+        `"${e.ts}","${e.admin}","${e.role}","${e.cat}","${e.action}","${e.target}"`
+      ).join('\n');
+    }
     const blob = new Blob([header + rows], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -6447,7 +6584,529 @@ const Tooltip = {
     this.el.style.top  = Math.max(8, y) + 'px';
   }
 };
+/* ============================================================
+   INVITE ACTIVITY LOG — tracks all invite links sent
+   ============================================================ */
+const InviteActivityLog = {
+  _filter: 'all',
+  items: [
+    {email:'devon.j@example.com',   type:'para',     label:'Paraprofessional', token:'A1B2C3D4', sentBy:'Super Admin', date:'Jun 10, 2026', time:'9:14 AM',  status:'accepted'},
+    {email:'p.patel@example.com',   type:'para',     label:'Paraprofessional', token:'E5F6G7H8', sentBy:'Super Admin', date:'Jun 10, 2026', time:'9:15 AM',  status:'accepted'},
+    {email:'j.liu@example.com',     type:'para',     label:'Paraprofessional', token:'I9J0K1L2', sentBy:'Sarah Kim',   date:'Jun 11, 2026', time:'11:02 AM', status:'pending'},
+    {email:'tricia.n@example.com',  type:'para',     label:'Paraprofessional', token:'M3N4O5P6', sentBy:'Sarah Kim',   date:'Jun 11, 2026', time:'11:03 AM', status:'pending'},
+    {email:'marcus.w@example.com',  type:'para',     label:'Paraprofessional', token:'Q7R8S9T0', sentBy:'Sarah Kim',   date:'Jun 11, 2026', time:'11:04 AM', status:'expired'},
+    {email:'admin@riverbend.com',   type:'facility', label:'Facility',         token:'U1V2W3X4', sentBy:'Super Admin', date:'Jun 12, 2026', time:'2:30 PM',  status:'accepted'},
+    {email:'hr@maplesnr.com',       type:'facility', label:'Facility',         token:'Y5Z6A7B8', sentBy:'Super Admin', date:'Jun 12, 2026', time:'2:31 PM',  status:'pending'},
+    {email:'ops@sunnycare.com',     type:'facility', label:'Facility',         token:'C9D0E1F2', sentBy:'Mike Rivera', date:'Jun 13, 2026', time:'10:00 AM', status:'pending'},
+    {email:'contact@bayside.com',   type:'facility', label:'Facility',         token:'G3H4I5J6', sentBy:'Mike Rivera', date:'Jun 13, 2026', time:'10:01 AM', status:'expired'},
+    {email:'sarah@properstaffing.com',type:'admin',  label:'Admin',            token:'K7L8M9N0', sentBy:'Super Admin', date:'Jun 9, 2026',  time:'8:00 AM',  status:'accepted'},
+    {email:'mike@properstaffing.com', type:'admin',  label:'Admin',            token:'O1P2Q3R4', sentBy:'Super Admin', date:'Jun 9, 2026',  time:'8:01 AM',  status:'accepted'},
+    {email:'jamie@properstaffing.com',type:'admin',  label:'Admin',            token:'S5T6U7V8', sentBy:'Super Admin', date:'Jun 9, 2026',  time:'8:02 AM',  status:'accepted'},
+  ],
+
+  add(entry){ this.items.unshift(entry); this.render(); },
+
+  _statusBadge(s){
+    const map = {
+      pending:  '<span class="badge badge-pending">Pending</span>',
+      accepted: '<span class="badge badge-verified">Accepted</span>',
+      expired:  '<span class="badge" style="background:var(--g200);color:var(--g600)">Expired</span>',
+    };
+    return map[s] || s;
+  },
+
+  filter(val){
+    this._filter = val;
+    // Update tab styles
+    ['all','para','facility','admin'].forEach(k => {
+      const el = document.getElementById(`ial-tab-${k}`);
+      if(!el) return;
+      el.className = k === val ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+    });
+    this.render();
+  },
+
+  render(){
+    const tbody = document.getElementById('invite-log-tbody');
+    const sub   = document.getElementById('invite-log-sub');
+    if(!tbody) return;
+    const show = this._filter === 'all' ? this.items : this.items.filter(i => i.type === this._filter);
+    if(sub) sub.textContent = `${show.length} invite${show.length!==1?'s':''} · ${this.items.filter(i=>i.status==='pending').length} pending`;
+    tbody.innerHTML = show.length ? show.map(i => `
+      <tr>
+        <td><div style="font-weight:600;font-size:13px">${i.email}</div></td>
+        <td>${i.label}</td>
+        <td style="color:var(--g600)">${i.sentBy}</td>
+        <td style="color:var(--g600);white-space:nowrap">${i.date} <span style="color:var(--g400);font-size:11.5px">${i.time}</span></td>
+        <td>${this._statusBadge(i.status)}</td>
+        <td class="td-actions">
+          ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.resend('${i.email}','${i.type}','${i.label}')">Resend</button>`:''}
+          ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.copyLink('${i.link||''}','${i.token}','${i.type}')">Copy link</button>`:''}
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No invite records found</td></tr>`;
+  },
+
+  resend(email, type, label){
+    const base = location.origin + location.pathname;
+    const token = Math.random().toString(36).slice(2,10).toUpperCase();
+    const now = new Date();
+    this.items.unshift({ email, type, label, token,
+      link: `${base}?invite=${type}&token=${token}`,
+      sentBy:'Super Admin',
+      date: now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      time: now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+      status:'pending'
+    });
+    this.render();
+    alert(`Invite resent to ${email}`);
+  },
+
+  copyLink(link, token, type){
+    const base = location.origin + location.pathname;
+    const url = link || `${base}?invite=${type}&token=${token}`;
+    if(navigator.clipboard) navigator.clipboard.writeText(url).then(()=>alert('Link copied to clipboard.'));
+    else alert(url);
+  },
+
+  exportCSV(){
+    const rows = [['Recipient','Type','Sent By','Date','Time','Status','Token']];
+    this.items.forEach(i => rows.push([i.email, i.label, i.sentBy, i.date, i.time, i.status, i.token]));
+    const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'invite-activity.csv';
+    a.click();
+  }
+};
+
+/* ============================================================
+   ADMIN INVITES — pending admin signups awaiting permission setup
+   ============================================================ */
+const AdminInvites = {
+  pending: [],
+
+  _perms: [
+    { key:'verif',     label:'Verification Queue',       desc:'Review and approve new professional and facility accounts' },
+    { key:'jobs',      label:'Job Management',           desc:'Create, edit, and pause job postings across all facilities' },
+    { key:'shifts',    label:'Live Shift Management',    desc:'Monitor and manage active shifts in real time' },
+    { key:'approvals', label:'Shift Approvals',          desc:'Approve or decline worker-facility shift assignments' },
+    { key:'pros',      label:'Professionals Roster',     desc:'View and manage the full paraprofessional roster' },
+    { key:'facilities',label:'Facilities',               desc:'View and manage partner facility accounts' },
+    { key:'monitoring',label:'Credential Monitoring',    desc:'Track expiring or flagged credentials' },
+    { key:'payouts',   label:'Payouts',                  desc:'View and process worker pay disbursements' },
+    { key:'disputes',  label:'Disputes',                 desc:'Manage billing and shift disputes' },
+    { key:'logs',      label:'System Logs',              desc:'Read-only access to all system activity logs' },
+    { key:'users',     label:'Admin Users',              desc:'Invite and manage other admin accounts (Super Admin only)' },
+  ],
+
+  addPending(entry){
+    this.pending.push(entry);
+    this.renderSection();
+    Badges.syncAll();
+  },
+
+  pendingCount(){ return this.pending.length; },
+
+  renderSection(){
+    const wrap = document.getElementById('admin-users-pending');
+    if(!wrap) return;
+    if(!this.pending.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    wrap.innerHTML = `
+      <div style="margin-bottom:18px">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;display:flex;align-items:center;gap:8px">
+          &#9203; Pending admin approvals
+          <span style="background:var(--amber);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:9px">${this.pending.length}</span>
+        </div>
+        <div style="font-size:12px;color:var(--g500);margin-bottom:12px">Review each applicant and set their permissions before activating.</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Submitted</th><th></th></tr></thead>
+            <tbody>${this.pending.map(p => `
+              <tr>
+                <td><strong>${p.name}</strong></td>
+                <td>${p.title}</td>
+                <td style="color:var(--g500);font-size:12px">${p.email}</td>
+                <td>${p.submitted}</td>
+                <td class="td-actions">
+                  <button class="btn btn-primary btn-sm" onclick="AdminInvites.openPermissions(${p.id})">Set permissions &amp; approve</button>
+                  <button class="btn btn-ghost btn-sm" onclick="AdminInvites.decline(${p.id})">Decline</button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+
+  openPermissions(id){
+    const p = this.pending.find(x => x.id === id);
+    if(!p) return;
+    const permsHTML = this._perms.map(pm => `
+      <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--g100);cursor:pointer">
+        <input type="checkbox" data-perm="${pm.key}" ${['verif','jobs','shifts','approvals','pros','facilities'].includes(pm.key)?'checked':''} style="accent-color:var(--blue);margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--g800)">${pm.label}</div>
+          <div style="font-size:11.5px;color:var(--g500);margin-top:2px">${pm.desc}</div>
+        </div>
+      </label>`).join('');
+    Modal.open({
+      badge: 'Admin Approval',
+      title: `Set permissions — ${p.name}`,
+      sub: `${p.title} · ${p.email}`,
+      wide: true,
+      bodyHTML: `
+        <div style="margin-bottom:14px;padding:12px 14px;background:var(--g50);border-radius:8px;font-size:12.5px;color:var(--g600)">
+          &#9888;&#65039; Selecting a permission grants this admin full access to that section. You can edit these after activation from the Admin Users page.
+        </div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:6px">Access permissions</div>
+        <div id="perms-list" style="max-height:340px;overflow-y:auto">${permsHTML}</div>`,
+      actions: [
+        { label:'Approve &amp; activate', cls:'btn-primary', fn:`AdminInvites.approve(${id})` },
+        { label:'Cancel', cls:'btn-secondary', fn:'Modal.close()' }
+      ]
+    });
+  },
+
+  approve(id){
+    const p = this.pending.find(x => x.id === id);
+    if(!p) return;
+    const checked = [...document.querySelectorAll('#perms-list input[type=checkbox]')]
+      .filter(cb => cb.checked).map(cb => cb.dataset.perm);
+    const permsLabels = checked.map(k => this._perms.find(pm=>pm.key===k)?.label).filter(Boolean);
+    this.pending = this.pending.filter(x => x.id !== id);
+    // Add to the live admin users table
+    const tbody = document.querySelector('#admin-users-active tbody');
+    if(tbody){
+      const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const colors = ['','avatar-green','avatar-amber'];
+      const cls = colors[tbody.children.length % colors.length];
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><div style="display:flex;gap:10px;align-items:center">
+          <div class="avatar ${cls}" style="width:30px;height:30px;font-size:11px">${initials}</div>
+          <div><div style="font-weight:600">${p.name}</div><div style="color:var(--g500);font-size:11px">${p.email}</div></div>
+        </div></td>
+        <td><span class="pill">${p.title}</span></td>
+        <td>Just now</td>
+        <td><span class="badge badge-verified">Active</span></td>
+        <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('${p.name}', this)">Edit</button></td>`;
+      tbody.appendChild(row);
+    }
+    this.renderSection();
+    ActivityLog.add('Admin', `Admin account activated — ${permsLabels.length} permissions granted`, p.name+' ('+p.title+')', 'Super Admin');
+    NotificationBell.push('admin', {ic:'green', icon:'&#10003;', title:p.name+' activated',
+      text:`Admin account approved with ${permsLabels.length} permissions: ${permsLabels.slice(0,3).join(', ')}${permsLabels.length>3?' +more':''}.`,
+      cta:null, action:null});
+    Modal.close();
+    alert(`${p.name} has been approved as ${p.title} with ${permsLabels.length} permission(s) granted.`);
+  },
+
+  decline(id){
+    const p = this.pending.find(x => x.id === id);
+    if(!p || !confirm(`Decline admin invite for ${p.name}?`)) return;
+    this.pending = this.pending.filter(x => x.id !== id);
+    this.renderSection();
+    ActivityLog.add('Admin', 'Admin invite declined', p.name, 'Super Admin');
+  }
+};
+
 Tooltip.init();
+
+/* ============================================================
+   INVITE LINK — admin sends role-specific signup links
+   ============================================================ */
+const InviteLink = {
+  _type: null,
+  _rowId: 0,
+
+  openModal(){
+    this._rowId = 0;
+    Modal.open({
+      badge: 'Send Invite',
+      title: 'Send invite links',
+      sub: 'Choose a role, add recipients, then send all at once.',
+      wide: true,
+      bodyHTML: `
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+          <div>
+            <label style="font-size:13px;font-weight:600;color:var(--g700);display:block;margin-bottom:8px">Invite type</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="flex:1;min-width:120px;border:1px solid var(--g200);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                <input type="radio" name="invite-type" value="para" checked style="accent-color:var(--blue)">
+                <div><div style="font-weight:600;font-size:13px">Paraprofessional</div><div style="font-size:11px;color:var(--g500)">Worker / caregiver</div></div>
+              </label>
+              <label style="flex:1;min-width:120px;border:1px solid var(--g200);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                <input type="radio" name="invite-type" value="facility" style="accent-color:var(--blue)">
+                <div><div style="font-weight:600;font-size:13px">Facility</div><div style="font-size:11px;color:var(--g500)">Care org / employer</div></div>
+              </label>
+              <label style="flex:1;min-width:120px;border:1px solid var(--g200);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                <input type="radio" name="invite-type" value="admin" style="accent-color:var(--blue)">
+                <div><div style="font-weight:600;font-size:13px">Admin</div><div style="font-size:11px;color:var(--g500)">Proper Staffing staff</div></div>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <label style="font-size:13px;font-weight:600;color:var(--g700)">Recipients</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn btn-ghost btn-sm" id="il-del-selected" style="display:none;color:var(--red)" onclick="InviteLink.deleteSelected()">&#128465; Delete selected</button>
+                <button class="btn btn-secondary btn-sm" onclick="InviteLink.addRow()">&#43; Add recipient</button>
+              </div>
+            </div>
+            <div style="background:var(--g50);border:1px solid var(--g200);border-radius:10px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:28px 1fr auto;gap:0;padding:8px 12px;border-bottom:1px solid var(--g200);background:white">
+                <input type="checkbox" id="il-check-all" style="accent-color:var(--blue)" onchange="InviteLink.toggleAll(this.checked)">
+                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--g500);padding-left:8px;line-height:28px">Email address</span>
+                <span></span>
+              </div>
+              <div id="il-rows" style="max-height:220px;overflow-y:auto"></div>
+            </div>
+            <div style="font-size:11.5px;color:var(--g400);margin-top:6px" id="il-count-label">0 recipients</div>
+          </div>
+        </div>`,
+      actions:[
+        { label:'Send all invites', cls:'btn-primary', fn:'InviteLink.generate()' },
+        { label:'Cancel', cls:'btn-secondary', fn:'Modal.close()' }
+      ]
+    });
+    this.addRow();
+  },
+
+  addRow(){
+    const id = ++this._rowId;
+    const container = document.getElementById('il-rows');
+    if(!container) return;
+    const row = document.createElement('div');
+    row.id = `il-row-${id}`;
+    row.style.cssText = 'display:grid;grid-template-columns:28px 1fr auto;gap:0;padding:8px 12px;border-bottom:1px solid var(--g100);align-items:center;background:white';
+    row.innerHTML = `
+      <input type="checkbox" class="il-row-cb" data-row="${id}" style="accent-color:var(--blue)" onchange="InviteLink._onCbChange()">
+      <input type="email" id="il-email-${id}" placeholder="email@example.com"
+        style="margin-left:8px;padding:7px 10px;border:1px solid var(--g200);border-radius:7px;font-size:13px;width:100%;box-sizing:border-box;background:white"
+        oninput="InviteLink._updateCount()">
+      <button onclick="InviteLink.deleteRow(${id})" title="Remove"
+        style="background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;padding:4px 8px;line-height:1;margin-left:6px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g400)'">&#215;</button>`;
+    container.appendChild(row);
+    this._updateCount();
+    document.getElementById(`il-email-${id}`)?.focus();
+  },
+
+  deleteRow(id){
+    document.getElementById(`il-row-${id}`)?.remove();
+    this._updateCount();
+    this._onCbChange();
+    if(!document.getElementById('il-rows')?.children.length) this.addRow();
+  },
+
+  deleteSelected(){
+    document.querySelectorAll('.il-row-cb:checked').forEach(cb => {
+      document.getElementById(`il-row-${cb.dataset.row}`)?.remove();
+    });
+    this._updateCount();
+    this._onCbChange();
+    if(!document.getElementById('il-rows')?.children.length) this.addRow();
+  },
+
+  toggleAll(checked){
+    document.querySelectorAll('.il-row-cb').forEach(cb => cb.checked = checked);
+    this._onCbChange();
+  },
+
+  _onCbChange(){
+    const any = !!document.querySelector('.il-row-cb:checked');
+    const delBtn = document.getElementById('il-del-selected');
+    if(delBtn) delBtn.style.display = any ? '' : 'none';
+    const allCb = document.getElementById('il-check-all');
+    if(allCb){
+      const total = document.querySelectorAll('.il-row-cb').length;
+      const checked = document.querySelectorAll('.il-row-cb:checked').length;
+      allCb.indeterminate = checked > 0 && checked < total;
+      allCb.checked = total > 0 && checked === total;
+    }
+  },
+
+  _updateCount(){
+    const emails = [...document.querySelectorAll('[id^="il-email-"]')].map(i=>i.value.trim()).filter(v=>v);
+    const lbl = document.getElementById('il-count-label');
+    if(lbl) lbl.textContent = `${document.querySelectorAll('[id^="il-email-"]').length} recipient row${document.querySelectorAll('[id^="il-email-"]').length===1?'':'s'} · ${emails.length} email${emails.length===1?'':'s'} entered`;
+  },
+
+  generate(){
+    const type = document.querySelector('input[name="invite-type"]:checked')?.value || 'para';
+    const inputs = [...document.querySelectorAll('[id^="il-email-"]')];
+    const emails = inputs.map(i=>i.value.trim()).filter(v=>v && v.includes('@'));
+    const invalid = inputs.map(i=>i.value.trim()).filter(v=>v && !v.includes('@'));
+    if(!emails.length){ alert('Please enter at least one valid email address.'); return; }
+    if(invalid.length){ alert(`These don't look like valid emails:\n${invalid.join('\n')}`); return; }
+
+    const base = location.origin + location.pathname;
+    const labelMap = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
+    const label = labelMap[type];
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+    emails.forEach(email => {
+      const token = Math.random().toString(36).slice(2,10).toUpperCase();
+      const link = `${base}?invite=${type}&token=${token}`;
+      InviteActivityLog.add({ email, type, label, token, link, sentBy:'Super Admin', date:dateStr, time:timeStr, status:'pending' });
+    });
+
+    ActivityLog.add('Invite', `${emails.length} invite link${emails.length>1?'s':''} sent`, `Role: ${label}`, 'Super Admin');
+    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:`${emails.length} invite${emails.length>1?'s':''} sent`,
+      text:`${label} invite${emails.length>1?'s':''} sent to ${emails.length} recipient${emails.length>1?'s':''}.`,
+      cta:'View log', action:()=>App.setPage('admin-invite-log')});
+
+    const foot = document.getElementById('dm-foot');
+    if(foot) foot.innerHTML = `
+      <div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; ${emails.length} invite email${emails.length>1?'s':''} sent successfully</div>
+      <button class="btn btn-ghost btn-sm" onclick="Modal.close();App.setPage('admin-invite-log')">View invite log</button>
+      <button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
+  },
+
+  copyLink(){
+    const val = document.getElementById('invite-link-val')?.value;
+    if(val && navigator.clipboard) navigator.clipboard.writeText(val).then(()=>alert('Link copied to clipboard.'));
+    else alert('Copy: ' + val);
+  },
+
+  // Called on page load when ?invite= params detected
+  initSignupPage(type){
+    this._type = type;
+    // Hide all normal UI
+    document.getElementById('sb-admin')?.classList.remove('active');
+    document.getElementById('sb-para')?.classList.remove('active');
+    document.getElementById('sb-facility')?.classList.remove('active');
+    document.querySelector('.role-bar')?.style && (document.querySelector('.role-bar').style.display = 'none');
+    document.querySelector('.mobile-nav') && (document.querySelector('.mobile-nav').style.display = 'none');
+    document.querySelector('.app').style.paddingTop = '0';
+    document.querySelector('.layout').style.height = '100vh';
+
+    const page = document.getElementById('invite-signup');
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    page.style.display = 'block';
+
+    const titleMap = {
+      para:     "You've been invited as a Paraprofessional",
+      facility: "You've been invited as a Facility",
+      admin:    "You've been invited as an Admin"
+    };
+    const subMap = {
+      para:     "Create your caregiver account — you'll be reviewed before your first shift.",
+      facility: "Create your facility account — you'll be reviewed before posting shifts.",
+      admin:    "Create your Proper Staffing admin account. A Super Admin will review and set your permissions."
+    };
+    document.getElementById('invite-signup-title').textContent = titleMap[type] || titleMap.para;
+    document.getElementById('invite-signup-sub').textContent   = subMap[type]  || subMap.para;
+
+    const inp = (id, lbl, type2, ph) => `<div><label class="form-label">${lbl}</label><input id="${id}" type="${type2}" placeholder="${ph}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>`;
+    const fields = document.getElementById('invite-signup-fields');
+
+    if(type === 'para'){
+      fields.innerHTML = `<div style="display:grid;gap:14px">
+        ${inp('su-name','Full name','text','Maya Rodriguez')}
+        ${inp('su-email','Email address','email','you@example.com')}
+        ${inp('su-phone','Phone number','tel','(415) 555-0100')}
+        ${inp('su-city','City','text','San Jose, CA')}
+        <div><label class="form-label">Primary credential</label>
+          <select id="su-cred" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
+            <option>CNA — Certified Nursing Assistant</option><option>HHA — Home Health Aide</option>
+            <option>PCA — Personal Care Aide</option><option>DSP — Direct Support Professional</option>
+            <option>CMA — Certified Medication Aide</option>
+          </select>
+        </div>
+        ${inp('su-pass','Password','password','Create a password')}
+        ${inp('su-pass2','Confirm password','password','Repeat password')}
+      </div>`;
+    } else if(type === 'facility'){
+      fields.innerHTML = `<div style="display:grid;gap:14px">
+        ${inp('su-name','Organization name','text','Riverbend Skilled Nursing')}
+        ${inp('su-email','Contact email','email','admin@facility.com')}
+        ${inp('su-phone','Phone number','tel','(408) 555-0100')}
+        ${inp('su-city','City','text','Santa Clara, CA')}
+        ${inp('su-license','Business license number','text','CA-BL-000000')}
+        ${inp('su-ein','EIN (Employer ID Number)','text','XX-XXXXXXX')}
+        ${inp('su-pass','Password','password','Create a password')}
+        ${inp('su-pass2','Confirm password','password','Repeat password')}
+      </div>`;
+    } else {
+      // Admin signup
+      fields.innerHTML = `<div style="display:grid;gap:14px">
+        ${inp('su-name','Full name','text','e.g. Jordan Smith')}
+        ${inp('su-email','Work email','email','you@properstaffing.com')}
+        ${inp('su-phone','Phone number','tel','(415) 555-0100')}
+        <div><label class="form-label">Job title</label>
+          <select id="su-title" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
+            <option>Operations Admin</option><option>Support Admin</option>
+            <option>Compliance Admin</option><option>Finance Admin</option>
+          </select>
+        </div>
+        ${inp('su-pass','Password','password','Create a password')}
+        ${inp('su-pass2','Confirm password','password','Repeat password')}
+      </div>`;
+    }
+  },
+
+  submitSignup(){
+    const get = id => (document.getElementById(id)?.value||'').trim();
+    const name  = get('su-name');
+    const email = get('su-email');
+    const pass  = get('su-pass');
+    const pass2 = get('su-pass2');
+    if(!name || !email || !pass){ alert('Please fill in all required fields.'); return; }
+    if(pass !== pass2){ alert('Passwords do not match.'); return; }
+
+    const type = this._type;
+    const newId = Date.now();
+
+    if(type === 'admin'){
+      const title = document.getElementById('su-title')?.value || 'Operations Admin';
+      const phone = get('su-phone');
+      AdminInvites.addPending({id: newId, name, email, phone, title, submitted: 'Just now'});
+      NotificationBell.push('admin', {ic:'blue', icon:'&#128272;', title:'Admin signup: '+name,
+        text:`${title} account submitted via invite. Pending permission review.`,
+        cta:'Review', action:()=>{ App.setRole('admin'); App.setPage('admin-users'); }});
+    } else {
+      const phone = get('su-phone');
+      const city  = get('su-city') || '—';
+      const isPara = type === 'para';
+      const cred    = isPara ? (document.getElementById('su-cred')?.value||'CNA').split('—')[0].trim() : null;
+      const license = !isPara ? get('su-license') : null;
+      const ein     = !isPara ? get('su-ein') : null;
+      const entry = {
+        id: newId, name, email, phone, city,
+        role: isPara ? `Paraprofessional · ${cred}` : 'Facility',
+        submitted: 'Just now',
+        docs: isPara ? 'ID pending upload' : 'Business docs pending',
+        status: 'pending',
+        idType: isPara ? 'Government ID (pending)' : 'Business License',
+        idName: name, dob: '—', idExp: '—',
+        credTitle: isPara ? `${cred} certification` : (license ? `License: ${license}` : 'Business License'),
+        credNum: isPara ? 'Pending' : (ein || 'Pending'),
+        credExp: '—', credStatus: 'Pending review', accountAge: 'Just now',
+      };
+      AdminQueue.items.unshift(entry);
+      AdminQueue.renderTable();
+      NotificationBell.push('admin', {ic:'blue', icon:'&#128203;', title:'New signup: '+name,
+        text:`${isPara?'Paraprofessional':'Facility'} account created via invite link. Ready for review.`,
+        cta:'Review', action:()=>{ App.setRole('admin'); AdminQueue.openReview(newId); }});
+    }
+
+    const page = document.getElementById('invite-signup');
+    page.innerHTML = `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:48px;margin-bottom:16px">&#10003;</div>
+        <div style="font-size:22px;font-weight:700;color:var(--navy);margin-bottom:8px">Account submitted!</div>
+        <div style="font-size:14px;color:var(--g500);max-width:360px;margin:0 auto">${type === 'admin'
+          ? 'Your admin account is pending approval. A Super Admin will review your access and notify you by email.'
+          : 'Your account is pending review by the Proper Staffing team. You\'ll receive an email once you\'re approved and can sign in.'
+        }</div>
+      </div>`;
+  }
+};
 
 renderJobs();
 ShiftPickup.init();
@@ -6462,8 +7121,17 @@ ActivityLog._renderDashboard();
 Badges.syncAll();
 ProfileState._propagatePara();
 ProfileState._propagateFacility();
-// App opens on the login gate — no role is active until the user signs in.
-App.lgSelect('para');
+// Check for invite link params before showing the normal login gate
+(function(){
+  const params = new URLSearchParams(location.search);
+  const inviteType = params.get('invite');
+  if(inviteType === 'para' || inviteType === 'facility'){
+    InviteLink.initSignupPage(inviteType);
+  } else {
+    // App opens on the login gate — no role is active until the user signs in.
+    App.lgSelect('para');
+  }
+})();
 </script>
 <!-- ===== Live backend: Neon database + Resend email ===== -->
 <script>
