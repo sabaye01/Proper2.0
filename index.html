@@ -1881,18 +1881,26 @@
 <!-- ============== ADMIN: ADMIN USERS ============== -->
 <div class="page" id="admin-users">
   <div class="page-head"><div><div class="page-title">Admin users</div><div class="page-sub">Only Super Admin can manage this list.</div></div>
-    <div class="page-head-right"><button class="btn btn-primary" onclick="Actions.editAdmin('', this)">&#10133; Add admin</button></div>
+    <div class="page-head-right"><button class="btn btn-primary" onclick="InviteLink.openModal()">&#128231; Send invite link</button></div>
   </div>
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Admin</th><th>Role</th><th>Last login</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px">SA</div><div><div style="font-weight:600">Super Admin</div><div style="color:var(--g500);font-size:11px">admin@properstaffing.com</div></div></div></td><td><span class="badge badge-active">Super Admin</span></td><td>Just now</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Super Admin', this)">Edit</button></td></tr>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-green" style="width:30px;height:30px;font-size:11px">SK</div><div><div style="font-weight:600">Sarah Kim</div><div style="color:var(--g500);font-size:11px">sarah@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>2 hours ago</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Sarah Kim', this)">Edit</button></td></tr>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-amber" style="width:30px;height:30px;font-size:11px">MR</div><div><div style="font-weight:600">Mike Rivera</div><div style="color:var(--g500);font-size:11px">mike@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>Yesterday</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Mike Rivera', this)">Edit</button></td></tr>
-        <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--g400)">JL</div><div><div style="font-weight:600">Jamie Lee</div><div style="color:var(--g500);font-size:11px">jamie@properstaffing.com</div></div></div></td><td><span class="pill">Support Admin</span></td><td>4 days ago</td><td><span class="badge badge-paused">Suspended</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Jamie Lee', this)">Edit</button></td></tr>
-      </tbody>
-    </table>
+
+  <!-- Pending admin invites — shown when there are signups awaiting approval -->
+  <div id="admin-users-pending" style="display:none"></div>
+
+  <!-- Active admins table -->
+  <div id="admin-users-active">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:8px">Active admins</div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Admin</th><th>Role</th><th>Last login</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px">SA</div><div><div style="font-weight:600">Super Admin</div><div style="color:var(--g500);font-size:11px">admin@properstaffing.com</div></div></div></td><td><span class="badge badge-active">Super Admin</span></td><td>Just now</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Super Admin', this)">Edit</button></td></tr>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-green" style="width:30px;height:30px;font-size:11px">SK</div><div><div style="font-weight:600">Sarah Kim</div><div style="color:var(--g500);font-size:11px">sarah@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>2 hours ago</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Sarah Kim', this)">Edit</button></td></tr>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-amber" style="width:30px;height:30px;font-size:11px">MR</div><div><div style="font-weight:600">Mike Rivera</div><div style="color:var(--g500);font-size:11px">mike@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>Yesterday</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Mike Rivera', this)">Edit</button></td></tr>
+          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--g400)">JL</div><div><div style="font-weight:600">Jamie Lee</div><div style="color:var(--g500);font-size:11px">jamie@properstaffing.com</div></div></div></td><td><span class="pill">Support Admin</span></td><td>4 days ago</td><td><span class="badge badge-paused">Suspended</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Jamie Lee', this)">Edit</button></td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -6308,13 +6316,145 @@ const Tooltip = {
     this.el.style.top  = Math.max(8, y) + 'px';
   }
 };
+/* ============================================================
+   ADMIN INVITES — pending admin signups awaiting permission setup
+   ============================================================ */
+const AdminInvites = {
+  pending: [],
+
+  _perms: [
+    { key:'verif',     label:'Verification Queue',       desc:'Review and approve new professional and facility accounts' },
+    { key:'jobs',      label:'Job Management',           desc:'Create, edit, and pause job postings across all facilities' },
+    { key:'shifts',    label:'Live Shift Management',    desc:'Monitor and manage active shifts in real time' },
+    { key:'approvals', label:'Shift Approvals',          desc:'Approve or decline worker-facility shift assignments' },
+    { key:'pros',      label:'Professionals Roster',     desc:'View and manage the full paraprofessional roster' },
+    { key:'facilities',label:'Facilities',               desc:'View and manage partner facility accounts' },
+    { key:'monitoring',label:'Credential Monitoring',    desc:'Track expiring or flagged credentials' },
+    { key:'payouts',   label:'Payouts',                  desc:'View and process worker pay disbursements' },
+    { key:'disputes',  label:'Disputes',                 desc:'Manage billing and shift disputes' },
+    { key:'logs',      label:'System Logs',              desc:'Read-only access to all system activity logs' },
+    { key:'users',     label:'Admin Users',              desc:'Invite and manage other admin accounts (Super Admin only)' },
+  ],
+
+  addPending(entry){
+    this.pending.push(entry);
+    this.renderSection();
+    Badges.syncAll();
+  },
+
+  pendingCount(){ return this.pending.length; },
+
+  renderSection(){
+    const wrap = document.getElementById('admin-users-pending');
+    if(!wrap) return;
+    if(!this.pending.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    wrap.innerHTML = `
+      <div style="margin-bottom:18px">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;display:flex;align-items:center;gap:8px">
+          &#9203; Pending admin approvals
+          <span style="background:var(--amber);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:9px">${this.pending.length}</span>
+        </div>
+        <div style="font-size:12px;color:var(--g500);margin-bottom:12px">Review each applicant and set their permissions before activating.</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Submitted</th><th></th></tr></thead>
+            <tbody>${this.pending.map(p => `
+              <tr>
+                <td><strong>${p.name}</strong></td>
+                <td>${p.title}</td>
+                <td style="color:var(--g500);font-size:12px">${p.email}</td>
+                <td>${p.submitted}</td>
+                <td class="td-actions">
+                  <button class="btn btn-primary btn-sm" onclick="AdminInvites.openPermissions(${p.id})">Set permissions &amp; approve</button>
+                  <button class="btn btn-ghost btn-sm" onclick="AdminInvites.decline(${p.id})">Decline</button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+
+  openPermissions(id){
+    const p = this.pending.find(x => x.id === id);
+    if(!p) return;
+    const permsHTML = this._perms.map(pm => `
+      <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--g100);cursor:pointer">
+        <input type="checkbox" data-perm="${pm.key}" ${['verif','jobs','shifts','approvals','pros','facilities'].includes(pm.key)?'checked':''} style="accent-color:var(--blue);margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--g800)">${pm.label}</div>
+          <div style="font-size:11.5px;color:var(--g500);margin-top:2px">${pm.desc}</div>
+        </div>
+      </label>`).join('');
+    Modal.open({
+      badge: 'Admin Approval',
+      title: `Set permissions — ${p.name}`,
+      sub: `${p.title} · ${p.email}`,
+      wide: true,
+      bodyHTML: `
+        <div style="margin-bottom:14px;padding:12px 14px;background:var(--g50);border-radius:8px;font-size:12.5px;color:var(--g600)">
+          &#9888;&#65039; Selecting a permission grants this admin full access to that section. You can edit these after activation from the Admin Users page.
+        </div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:6px">Access permissions</div>
+        <div id="perms-list" style="max-height:340px;overflow-y:auto">${permsHTML}</div>`,
+      actions: [
+        { label:'Approve &amp; activate', cls:'btn-primary', fn:`AdminInvites.approve(${id})` },
+        { label:'Cancel', cls:'btn-secondary', fn:'Modal.close()' }
+      ]
+    });
+  },
+
+  approve(id){
+    const p = this.pending.find(x => x.id === id);
+    if(!p) return;
+    const checked = [...document.querySelectorAll('#perms-list input[type=checkbox]')]
+      .filter(cb => cb.checked).map(cb => cb.dataset.perm);
+    const permsLabels = checked.map(k => this._perms.find(pm=>pm.key===k)?.label).filter(Boolean);
+    this.pending = this.pending.filter(x => x.id !== id);
+    // Add to the live admin users table
+    const tbody = document.querySelector('#admin-users-active tbody');
+    if(tbody){
+      const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const colors = ['','avatar-green','avatar-amber'];
+      const cls = colors[tbody.children.length % colors.length];
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><div style="display:flex;gap:10px;align-items:center">
+          <div class="avatar ${cls}" style="width:30px;height:30px;font-size:11px">${initials}</div>
+          <div><div style="font-weight:600">${p.name}</div><div style="color:var(--g500);font-size:11px">${p.email}</div></div>
+        </div></td>
+        <td><span class="pill">${p.title}</span></td>
+        <td>Just now</td>
+        <td><span class="badge badge-verified">Active</span></td>
+        <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('${p.name}', this)">Edit</button></td>`;
+      tbody.appendChild(row);
+    }
+    this.renderSection();
+    ActivityLog.add('Admin', `Admin account activated — ${permsLabels.length} permissions granted`, p.name+' ('+p.title+')', 'Super Admin');
+    NotificationBell.push('admin', {ic:'green', icon:'&#10003;', title:p.name+' activated',
+      text:`Admin account approved with ${permsLabels.length} permissions: ${permsLabels.slice(0,3).join(', ')}${permsLabels.length>3?' +more':''}.`,
+      cta:null, action:null});
+    Modal.close();
+    alert(`${p.name} has been approved as ${p.title} with ${permsLabels.length} permission(s) granted.`);
+  },
+
+  decline(id){
+    const p = this.pending.find(x => x.id === id);
+    if(!p || !confirm(`Decline admin invite for ${p.name}?`)) return;
+    this.pending = this.pending.filter(x => x.id !== id);
+    this.renderSection();
+    ActivityLog.add('Admin', 'Admin invite declined', p.name, 'Super Admin');
+  }
+};
+
 Tooltip.init();
 
 /* ============================================================
    INVITE LINK — admin sends role-specific signup links
    ============================================================ */
 const InviteLink = {
-  _type: null, // 'para' | 'facility'
+  _type: null, // 'para' | 'facility' | 'admin'
 
   openModal(){
     Modal.open({
@@ -6324,14 +6464,18 @@ const InviteLink = {
       bodyHTML: `
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
           <label style="font-size:13px;font-weight:600;color:var(--g700)">Invite type</label>
-          <div style="display:flex;gap:10px">
-            <label style="flex:1;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label style="flex:1;min-width:130px;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
               <input type="radio" name="invite-type" value="para" checked style="accent-color:var(--blue)">
               <div><div style="font-weight:600;font-size:13px">Paraprofessional</div><div style="font-size:11.5px;color:var(--g500)">Worker / caregiver</div></div>
             </label>
-            <label style="flex:1;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+            <label style="flex:1;min-width:130px;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
               <input type="radio" name="invite-type" value="facility" style="accent-color:var(--blue)">
               <div><div style="font-weight:600;font-size:13px">Facility</div><div style="font-size:11.5px;color:var(--g500)">Care org / employer</div></div>
+            </label>
+            <label style="flex:1;min-width:130px;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+              <input type="radio" name="invite-type" value="admin" style="accent-color:var(--blue)">
+              <div><div style="font-weight:600;font-size:13px">Admin</div><div style="font-size:11.5px;color:var(--g500)">Proper Staffing staff</div></div>
             </label>
           </div>
           <label style="font-size:13px;font-weight:600;color:var(--g700);margin-top:6px">Recipient email</label>
@@ -6364,7 +6508,8 @@ const InviteLink = {
     if(lv) lv.value = link;
     if(lp) lp.style.display = 'block';
     // Log + notify
-    const label = type === 'para' ? 'Paraprofessional' : 'Facility';
+    const labelMap = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
+    const label = labelMap[type] || type;
     ActivityLog.add('Invite', `Invite link sent to ${email}`, `Role: ${label}`, 'Super Admin');
     NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:'Invite sent', text:`${label} invite sent to ${email}.`, cta:null, action:null});
     // Simulate email send confirmation
@@ -6394,46 +6539,64 @@ const InviteLink = {
     document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
     page.style.display = 'block';
 
-    const isPara = type === 'para';
-    document.getElementById('invite-signup-title').textContent = isPara
-      ? "You've been invited as a Paraprofessional"
-      : "You've been invited as a Facility";
-    document.getElementById('invite-signup-sub').textContent = isPara
-      ? 'Create your caregiver account — you\'ll be reviewed before your first shift.'
-      : 'Create your facility account — you\'ll be reviewed before posting shifts.';
+    const titleMap = {
+      para:     "You've been invited as a Paraprofessional",
+      facility: "You've been invited as a Facility",
+      admin:    "You've been invited as an Admin"
+    };
+    const subMap = {
+      para:     "Create your caregiver account — you'll be reviewed before your first shift.",
+      facility: "Create your facility account — you'll be reviewed before posting shifts.",
+      admin:    "Create your Proper Staffing admin account. A Super Admin will review and set your permissions."
+    };
+    document.getElementById('invite-signup-title').textContent = titleMap[type] || titleMap.para;
+    document.getElementById('invite-signup-sub').textContent   = subMap[type]  || subMap.para;
 
+    const inp = (id, lbl, type2, ph) => `<div><label class="form-label">${lbl}</label><input id="${id}" type="${type2}" placeholder="${ph}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>`;
     const fields = document.getElementById('invite-signup-fields');
-    if(isPara){
-      fields.innerHTML = `
-        <div style="display:grid;gap:14px">
-          <div><label class="form-label">Full name</label><input id="su-name" type="text" placeholder="Maya Rodriguez" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Email address</label><input id="su-email" type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Phone number</label><input id="su-phone" type="tel" placeholder="(415) 555-0100" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">City</label><input id="su-city" type="text" placeholder="San Jose, CA" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Primary credential</label>
-            <select id="su-cred" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
-              <option>CNA — Certified Nursing Assistant</option>
-              <option>HHA — Home Health Aide</option>
-              <option>PCA — Personal Care Aide</option>
-              <option>DSP — Direct Support Professional</option>
-              <option>CMA — Certified Medication Aide</option>
-            </select>
-          </div>
-          <div><label class="form-label">Password</label><input id="su-pass" type="password" placeholder="Create a password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Confirm password</label><input id="su-pass2" type="password" placeholder="Repeat password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-        </div>`;
+
+    if(type === 'para'){
+      fields.innerHTML = `<div style="display:grid;gap:14px">
+        ${inp('su-name','Full name','text','Maya Rodriguez')}
+        ${inp('su-email','Email address','email','you@example.com')}
+        ${inp('su-phone','Phone number','tel','(415) 555-0100')}
+        ${inp('su-city','City','text','San Jose, CA')}
+        <div><label class="form-label">Primary credential</label>
+          <select id="su-cred" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
+            <option>CNA — Certified Nursing Assistant</option><option>HHA — Home Health Aide</option>
+            <option>PCA — Personal Care Aide</option><option>DSP — Direct Support Professional</option>
+            <option>CMA — Certified Medication Aide</option>
+          </select>
+        </div>
+        ${inp('su-pass','Password','password','Create a password')}
+        ${inp('su-pass2','Confirm password','password','Repeat password')}
+      </div>`;
+    } else if(type === 'facility'){
+      fields.innerHTML = `<div style="display:grid;gap:14px">
+        ${inp('su-name','Organization name','text','Riverbend Skilled Nursing')}
+        ${inp('su-email','Contact email','email','admin@facility.com')}
+        ${inp('su-phone','Phone number','tel','(408) 555-0100')}
+        ${inp('su-city','City','text','Santa Clara, CA')}
+        ${inp('su-license','Business license number','text','CA-BL-000000')}
+        ${inp('su-ein','EIN (Employer ID Number)','text','XX-XXXXXXX')}
+        ${inp('su-pass','Password','password','Create a password')}
+        ${inp('su-pass2','Confirm password','password','Repeat password')}
+      </div>`;
     } else {
-      fields.innerHTML = `
-        <div style="display:grid;gap:14px">
-          <div><label class="form-label">Organization name</label><input id="su-name" type="text" placeholder="Riverbend Skilled Nursing" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Contact email</label><input id="su-email" type="email" placeholder="admin@facility.com" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Phone number</label><input id="su-phone" type="tel" placeholder="(408) 555-0100" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">City</label><input id="su-city" type="text" placeholder="Santa Clara, CA" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Business license number</label><input id="su-license" type="text" placeholder="CA-BL-000000" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">EIN (Employer ID Number)</label><input id="su-ein" type="text" placeholder="XX-XXXXXXX" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Password</label><input id="su-pass" type="password" placeholder="Create a password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-          <div><label class="form-label">Confirm password</label><input id="su-pass2" type="password" placeholder="Repeat password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
-        </div>`;
+      // Admin signup
+      fields.innerHTML = `<div style="display:grid;gap:14px">
+        ${inp('su-name','Full name','text','e.g. Jordan Smith')}
+        ${inp('su-email','Work email','email','you@properstaffing.com')}
+        ${inp('su-phone','Phone number','tel','(415) 555-0100')}
+        <div><label class="form-label">Job title</label>
+          <select id="su-title" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
+            <option>Operations Admin</option><option>Support Admin</option>
+            <option>Compliance Admin</option><option>Finance Admin</option>
+          </select>
+        </div>
+        ${inp('su-pass','Password','password','Create a password')}
+        ${inp('su-pass2','Confirm password','password','Repeat password')}
+      </div>`;
     }
   },
 
@@ -6441,47 +6604,56 @@ const InviteLink = {
     const get = id => (document.getElementById(id)?.value||'').trim();
     const name  = get('su-name');
     const email = get('su-email');
-    const phone = get('su-phone');
-    const city  = get('su-city');
     const pass  = get('su-pass');
     const pass2 = get('su-pass2');
-    if(!name || !email || !phone || !city || !pass){ alert('Please fill in all required fields.'); return; }
+    if(!name || !email || !pass){ alert('Please fill in all required fields.'); return; }
     if(pass !== pass2){ alert('Passwords do not match.'); return; }
-    const isPara = this._type === 'para';
-    const cred = isPara ? (document.getElementById('su-cred')?.value||'CNA').split('—')[0].trim() : null;
-    const license = !isPara ? get('su-license') : null;
-    const ein = !isPara ? get('su-ein') : null;
+
+    const type = this._type;
     const newId = Date.now();
-    const entry = {
-      id: newId,
-      name,
-      email,
-      phone,
-      city,
-      role: isPara ? `Paraprofessional · ${cred}` : 'Facility',
-      submitted: 'Just now',
-      docs: isPara ? 'ID pending upload' : 'Business docs pending',
-      status: 'pending',
-      idType: isPara ? 'Government ID (pending)' : 'Business License',
-      idName: name,
-      dob: '—',
-      idExp: '—',
-      credTitle: isPara ? `${cred} certification` : (license ? `License: ${license}` : 'Business License'),
-      credNum: isPara ? 'Pending' : (ein || 'Pending'),
-      credExp: '—',
-      credStatus: 'Pending review',
-      accountAge: 'Just now',
-    };
-    AdminQueue.items.unshift(entry);
-    AdminQueue.renderTable();
-    NotificationBell.push('admin', {ic:'blue', icon:'&#128203;', title:'New signup: '+name, text:`${isPara?'Paraprofessional':'Facility'} account created via invite link. Ready for review.`, cta:'Review', action:()=>{ App.setRole('admin'); AdminQueue.openReview(newId); }});
-    // Show confirmation screen
+
+    if(type === 'admin'){
+      const title = document.getElementById('su-title')?.value || 'Operations Admin';
+      const phone = get('su-phone');
+      AdminInvites.addPending({id: newId, name, email, phone, title, submitted: 'Just now'});
+      NotificationBell.push('admin', {ic:'blue', icon:'&#128272;', title:'Admin signup: '+name,
+        text:`${title} account submitted via invite. Pending permission review.`,
+        cta:'Review', action:()=>{ App.setRole('admin'); App.setPage('admin-users'); }});
+    } else {
+      const phone = get('su-phone');
+      const city  = get('su-city') || '—';
+      const isPara = type === 'para';
+      const cred    = isPara ? (document.getElementById('su-cred')?.value||'CNA').split('—')[0].trim() : null;
+      const license = !isPara ? get('su-license') : null;
+      const ein     = !isPara ? get('su-ein') : null;
+      const entry = {
+        id: newId, name, email, phone, city,
+        role: isPara ? `Paraprofessional · ${cred}` : 'Facility',
+        submitted: 'Just now',
+        docs: isPara ? 'ID pending upload' : 'Business docs pending',
+        status: 'pending',
+        idType: isPara ? 'Government ID (pending)' : 'Business License',
+        idName: name, dob: '—', idExp: '—',
+        credTitle: isPara ? `${cred} certification` : (license ? `License: ${license}` : 'Business License'),
+        credNum: isPara ? 'Pending' : (ein || 'Pending'),
+        credExp: '—', credStatus: 'Pending review', accountAge: 'Just now',
+      };
+      AdminQueue.items.unshift(entry);
+      AdminQueue.renderTable();
+      NotificationBell.push('admin', {ic:'blue', icon:'&#128203;', title:'New signup: '+name,
+        text:`${isPara?'Paraprofessional':'Facility'} account created via invite link. Ready for review.`,
+        cta:'Review', action:()=>{ App.setRole('admin'); AdminQueue.openReview(newId); }});
+    }
+
     const page = document.getElementById('invite-signup');
     page.innerHTML = `
       <div style="text-align:center;padding:60px 20px">
         <div style="font-size:48px;margin-bottom:16px">&#10003;</div>
         <div style="font-size:22px;font-weight:700;color:var(--navy);margin-bottom:8px">Account submitted!</div>
-        <div style="font-size:14px;color:var(--g500);max-width:360px;margin:0 auto">Your account is pending review by the Proper Staffing team. You'll receive an email once you're approved and can sign in.</div>
+        <div style="font-size:14px;color:var(--g500);max-width:360px;margin:0 auto">${type === 'admin'
+          ? 'Your admin account is pending approval. A Super Admin will review your access and notify you by email.'
+          : 'Your account is pending review by the Proper Staffing team. You\'ll receive an email once you\'re approved and can sign in.'
+        }</div>
       </div>`;
   }
 };
