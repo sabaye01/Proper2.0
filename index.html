@@ -1936,21 +1936,8 @@
   <!-- Pending admin invites — shown when there are signups awaiting approval -->
   <div id="admin-users-pending" style="display:none"></div>
 
-  <!-- Active admins table -->
-  <div id="admin-users-active">
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:8px">Active admins</div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Admin</th><th>Role</th><th>Last login</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px">SA</div><div><div style="font-weight:600">Super Admin</div><div style="color:var(--g500);font-size:11px">admin@properstaffing.com</div></div></div></td><td><span class="badge badge-active">Super Admin</span></td><td>Just now</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Super Admin', this)">Edit</button></td></tr>
-          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-green" style="width:30px;height:30px;font-size:11px">SK</div><div><div style="font-weight:600">Sarah Kim</div><div style="color:var(--g500);font-size:11px">sarah@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>2 hours ago</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Sarah Kim', this)">Edit</button></td></tr>
-          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar avatar-amber" style="width:30px;height:30px;font-size:11px">MR</div><div><div style="font-weight:600">Mike Rivera</div><div style="color:var(--g500);font-size:11px">mike@properstaffing.com</div></div></div></td><td><span class="pill">Operations Admin</span></td><td>Yesterday</td><td><span class="badge badge-verified">Active</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Mike Rivera', this)">Edit</button></td></tr>
-          <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--g400)">JL</div><div><div style="font-weight:600">Jamie Lee</div><div style="color:var(--g500);font-size:11px">jamie@properstaffing.com</div></div></div></td><td><span class="pill">Support Admin</span></td><td>4 days ago</td><td><span class="badge badge-paused">Suspended</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('Jamie Lee', this)">Edit</button></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Active admins table — rendered by AdminUsers.render() -->
+  <div id="admin-users-active"></div>
 </div>
 
 <!-- ============== ADMIN: SYSTEM LOGS ============== -->
@@ -5280,15 +5267,28 @@ const Modal = {
     document.getElementById('dm-modal').classList.toggle('wide', !!cfg.wide);
     const foot = document.getElementById('dm-foot');
     const acts = cfg.actions || [{label:'Close', cls:'btn-secondary', fn:'Modal.close()'}];
-    foot.innerHTML = acts.map(a =>
-      `<button class="btn ${a.cls||'btn-secondary'}" onclick="${a.fn}">${a.label}</button>`
-    ).join('');
-    foot.style.display = acts.length ? 'flex' : 'none';
+    // extraLeft: HTML rendered on the left side of the footer (e.g. a suspend button)
+    const leftHTML = cfg.extraLeft || '';
+    foot.innerHTML = leftHTML +
+      `<div style="display:flex;gap:8px;margin-left:auto">` +
+      acts.map(a => `<button class="btn ${a.cls||'btn-secondary'}" onclick="${a.fn}">${a.label}</button>`).join('') +
+      `</div>`;
+    foot.style.display = 'flex';
+    foot.style.alignItems = 'center';
     document.getElementById('dm-overlay').classList.add('show');
   },
   close(){ document.getElementById('dm-overlay').classList.remove('show'); },
   toggleSection(headEl){ if(headEl && headEl.parentElement) headEl.parentElement.classList.toggle('collapsed'); },
-  toast(msg){ Modal.close(); setTimeout(()=>alert(msg), 60); }
+  toast(msg, type){
+    Modal.close();
+    const t = document.createElement('div');
+    const colors = {success:'#16A34A', error:'#DC2626', info:'#2563EB'};
+    const color = colors[type] || colors.info;
+    t.style.cssText = `position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:${color};color:white;padding:11px 22px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,0.18);pointer-events:none;animation:fade 0.2s ease`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(), 3000);
+  }
 };
 
 /* ============ ACTION HANDLERS (review / edit / document) ============ */
@@ -6671,6 +6671,141 @@ const InviteActivityLog = {
 /* ============================================================
    ADMIN INVITES — pending admin signups awaiting permission setup
    ============================================================ */
+/* ============ ADMIN USERS — permission management ============ */
+const AdminUsers = {
+  _nextId: 10,
+  _avatarColors: ['','avatar-green','avatar-amber','','avatar-green'],
+
+  // Seeded active admins
+  list: [
+    { id:1, name:'Super Admin',  email:'admin@properstaffing.com',  title:'Super Admin',       lastLogin:'Just now',    status:'active',    superAdmin:true,  perms:['verif','jobs','shifts','approvals','pros','facilities','monitoring','payouts','disputes','logs','users'] },
+    { id:2, name:'Sarah Kim',    email:'sarah@properstaffing.com',  title:'Operations Admin',  lastLogin:'2 hours ago', status:'active',    superAdmin:false, perms:['verif','shifts','approvals','pros','facilities','logs'] },
+    { id:3, name:'Mike Rivera',  email:'mike@properstaffing.com',   title:'Operations Admin',  lastLogin:'Yesterday',   status:'active',    superAdmin:false, perms:['jobs','shifts','pros','facilities'] },
+    { id:4, name:'Jamie Lee',    email:'jamie@properstaffing.com',  title:'Support Admin',     lastLogin:'4 days ago',  status:'suspended', superAdmin:false, perms:['pros','logs'] },
+  ],
+
+  _initials(name){ return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); },
+
+  render(){
+    const wrap = document.getElementById('admin-users-active');
+    if(!wrap) return;
+    const rows = this.list.map((a,i) => {
+      const avatarCls = a.superAdmin ? '' : this._avatarColors[i % this._avatarColors.length];
+      const avatarStyle = a.status === 'suspended' ? 'background:var(--g400)' : '';
+      const roleBadge = a.superAdmin
+        ? `<span class="badge badge-active">Super Admin</span>`
+        : `<span class="pill">${a.title}</span>`;
+      const statusBadge = a.status === 'suspended'
+        ? `<span class="badge badge-paused">Suspended</span>`
+        : `<span class="badge badge-verified">Active</span>`;
+      const permCount = a.superAdmin ? 'All permissions' : `${a.perms.length} permission${a.perms.length!==1?'s':''}`;
+      const actionBtn = a.superAdmin
+        ? `<span style="font-size:11.5px;color:var(--g400);padding:6px 10px">&#128274; Cannot edit</span>`
+        : `<button class="btn btn-secondary btn-sm" onclick="AdminUsers.openEdit(${a.id})">&#9998; Edit permissions</button>`;
+      return `<tr>
+        <td><div style="display:flex;gap:10px;align-items:center">
+          <div class="avatar ${avatarCls}" style="width:30px;height:30px;font-size:11px;${avatarStyle}">${this._initials(a.name)}</div>
+          <div><div style="font-weight:600">${a.name}</div><div style="color:var(--g500);font-size:11px">${a.email}</div></div>
+        </div></td>
+        <td>${roleBadge}</td>
+        <td><span style="font-size:11.5px;color:var(--g500)">${permCount}</span></td>
+        <td>${a.lastLogin}</td>
+        <td>${statusBadge}</td>
+        <td class="td-actions" style="display:flex;gap:6px;align-items:center">${actionBtn}</td>
+      </tr>`;
+    }).join('');
+    wrap.innerHTML = `
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:8px">Active admins</div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Admin</th><th>Role</th><th>Permissions</th><th>Last login</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  },
+
+  openEdit(id){
+    const a = this.list.find(x => x.id === id);
+    if(!a || a.superAdmin) return;
+    const allPerms = AdminInvites._perms;
+    const permsHTML = allPerms.map(pm => `
+      <label style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--g100);cursor:pointer">
+        <input type="checkbox" data-perm="${pm.key}" ${a.perms.includes(pm.key)?'checked':''} style="accent-color:var(--blue);margin-top:2px;flex-shrink:0">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--g800)">${pm.label}</div>
+          <div style="font-size:11.5px;color:var(--g500);margin-top:2px">${pm.desc}</div>
+        </div>
+      </label>`).join('');
+
+    const suspendBtn = a.status === 'suspended'
+      ? `<button class="btn btn-success btn-sm" style="margin-right:auto" onclick="AdminUsers.setStatus(${id},'active')">&#10003; Reactivate</button>`
+      : `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="AdminUsers.setStatus(${id},'suspended')">&#9888; Suspend</button>`;
+
+    Modal.open({
+      badge: 'Super Admin · Edit permissions',
+      title: a.name,
+      sub: `${a.title} · ${a.email}`,
+      wide: true,
+      bodyHTML: `
+        <div style="background:var(--g50);border-radius:8px;padding:12px 14px;font-size:12.5px;color:var(--g600);margin-bottom:16px;display:flex;align-items:center;gap:8px">
+          &#128274; Changes take effect immediately. The admin will see updated access on their next page load.
+        </div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--g500);margin-bottom:4px">Access permissions</div>
+        <div style="font-size:11.5px;color:var(--g500);margin-bottom:10px">Check the sections this admin can access.</div>
+        <div id="edit-perms-list" style="max-height:360px;overflow-y:auto">${permsHTML}</div>`,
+      extraLeft: suspendBtn,
+      actions: [
+        { label:'Save permissions', cls:'btn-primary', fn:`AdminUsers.savePerms(${id})` },
+        { label:'Cancel', cls:'btn-secondary', fn:'Modal.close()' }
+      ]
+    });
+  },
+
+  savePerms(id){
+    const a = this.list.find(x => x.id === id);
+    if(!a) return;
+    const checked = [...document.querySelectorAll('#edit-perms-list input[type=checkbox]')]
+      .filter(cb => cb.checked).map(cb => cb.dataset.perm);
+    const added   = checked.filter(k => !a.perms.includes(k));
+    const removed = a.perms.filter(k => !checked.includes(k));
+    a.perms = checked;
+    this.render();
+    Modal.close();
+    const allPerms = AdminInvites._perms;
+    const changes = [
+      ...added.map(k=>`+${allPerms.find(p=>p.key===k)?.label}`),
+      ...removed.map(k=>`−${allPerms.find(p=>p.key===k)?.label}`)
+    ];
+    ActivityLog.add('Admin', `Permissions updated (${changes.length} change${changes.length!==1?'s':''})`, a.name, 'Super Admin');
+    NotificationBell.push('admin',{ic:'blue',icon:'&#9998;',title:`${a.name} permissions updated`,
+      text:`${checked.length} permission${checked.length!==1?'s':''} active. Changes: ${changes.slice(0,3).join(', ')}${changes.length>3?' +more':''}.`,cta:null,action:null});
+    Modal.toast(`Permissions saved for ${a.name}.`,'success');
+  },
+
+  setStatus(id, status){
+    const a = this.list.find(x => x.id === id);
+    if(!a) return;
+    if(!confirm(`${status==='suspended'?'Suspend':'Reactivate'} ${a.name}?`)) return;
+    a.status = status;
+    this.render();
+    Modal.close();
+    const verb = status === 'suspended' ? 'suspended' : 'reactivated';
+    ActivityLog.add('Admin', `Admin account ${verb}`, a.name, 'Super Admin');
+    Modal.toast(`${a.name} has been ${verb}.`, status==='suspended'?'error':'success');
+  },
+
+  // Called by AdminInvites.approve() to add a newly approved admin
+  addActive(entry, perms){
+    this._nextId++;
+    this.list.push({
+      id: this._nextId, name: entry.name, email: entry.email,
+      title: entry.title || 'Admin', lastLogin: 'Never',
+      status: 'active', superAdmin: false, perms: perms || []
+    });
+    this.render();
+  }
+};
+
 const AdminInvites = {
   pending: [],
 
@@ -6764,24 +6899,7 @@ const AdminInvites = {
       .filter(cb => cb.checked).map(cb => cb.dataset.perm);
     const permsLabels = checked.map(k => this._perms.find(pm=>pm.key===k)?.label).filter(Boolean);
     this.pending = this.pending.filter(x => x.id !== id);
-    // Add to the live admin users table
-    const tbody = document.querySelector('#admin-users-active tbody');
-    if(tbody){
-      const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const colors = ['','avatar-green','avatar-amber'];
-      const cls = colors[tbody.children.length % colors.length];
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td><div style="display:flex;gap:10px;align-items:center">
-          <div class="avatar ${cls}" style="width:30px;height:30px;font-size:11px">${initials}</div>
-          <div><div style="font-weight:600">${p.name}</div><div style="color:var(--g500);font-size:11px">${p.email}</div></div>
-        </div></td>
-        <td><span class="pill">${p.title}</span></td>
-        <td>Just now</td>
-        <td><span class="badge badge-verified">Active</span></td>
-        <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="Actions.editAdmin('${p.name}', this)">Edit</button></td>`;
-      tbody.appendChild(row);
-    }
+    AdminUsers.addActive(p, checked);
     this.renderSection();
     ActivityLog.add('Admin', `Admin account activated — ${permsLabels.length} permissions granted`, p.name+' ('+p.title+')', 'Super Admin');
     NotificationBell.push('admin', {ic:'green', icon:'&#10003;', title:p.name+' activated',
@@ -7109,6 +7227,8 @@ ActivityLog._renderDashboard();
 Badges.syncAll();
 ProfileState._propagatePara();
 ProfileState._propagateFacility();
+AdminUsers.render();
+AdminInvites.renderSection();
 
 /* ============ SENSITIVE FIELD HELPERS ============ */
 const Sensitive = {
