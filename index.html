@@ -1077,6 +1077,7 @@
     <div class="sb-label">Operations</div>
     <div class="nav-item active" data-page="admin-dashboard" onclick="App.setPage('admin-dashboard')"><span class="nav-icon">&#9638;</span>Dashboard</div>
     <div class="nav-item" data-page="admin-queue" onclick="App.setPage('admin-queue')"><span class="nav-icon">&#128203;</span>Verification Queue<span class="nav-badge" id="badge-admin-queue">7</span></div>
+    <div class="nav-item" onclick="InviteLink.openModal()"><span class="nav-icon">&#128231;</span>Send Invite Link</div>
     <div class="nav-item" data-page="admin-jobs" onclick="App.setPage('admin-jobs')"><span class="nav-icon">&#128188;</span>Job Management</div>
     <div class="nav-item" data-page="admin-professionals" onclick="App.setPage('admin-professionals')"><span class="nav-icon">&#128101;</span>Professionals</div>
     <div class="nav-item" data-page="admin-facilities" onclick="App.setPage('admin-facilities')"><span class="nav-icon">&#127970;</span>Facilities</div>
@@ -2247,6 +2248,20 @@
       <thead><tr><th>ID</th><th>Type</th><th>Parties</th><th>Detail</th><th>Status</th><th></th></tr></thead>
       <tbody id="admin-disputes-tbody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ===================== INVITE SIGNUP PAGE ===================== -->
+<div class="page" id="invite-signup" style="display:none;max-width:520px;margin:60px auto;padding:0 16px">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:28px;margin-bottom:8px">&#128231;</div>
+    <div style="font-size:22px;font-weight:700;color:var(--navy)" id="invite-signup-title">You've been invited</div>
+    <div style="font-size:14px;color:var(--g500);margin-top:6px" id="invite-signup-sub">Create your account to get started</div>
+  </div>
+  <div style="background:white;border:1px solid var(--g200);border-radius:14px;padding:28px 28px 24px">
+    <div id="invite-signup-fields"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="InviteLink.submitSignup()">Create account &amp; submit for review</button>
+    <div style="font-size:11.5px;color:var(--g400);text-align:center;margin-top:14px">Your account will be reviewed by a Proper Staffing admin before you can sign in.</div>
   </div>
 </div>
 
@@ -6271,6 +6286,182 @@ const Tooltip = {
 };
 Tooltip.init();
 
+/* ============================================================
+   INVITE LINK — admin sends role-specific signup links
+   ============================================================ */
+const InviteLink = {
+  _type: null, // 'para' | 'facility'
+
+  openModal(){
+    Modal.open({
+      badge: 'Send Invite',
+      title: 'Send an invite link',
+      sub: 'Choose who you want to invite. They\'ll receive a link to create their account.',
+      bodyHTML: `
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <label style="font-size:13px;font-weight:600;color:var(--g700)">Invite type</label>
+          <div style="display:flex;gap:10px">
+            <label style="flex:1;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+              <input type="radio" name="invite-type" value="para" checked style="accent-color:var(--blue)">
+              <div><div style="font-weight:600;font-size:13px">Paraprofessional</div><div style="font-size:11.5px;color:var(--g500)">Worker / caregiver</div></div>
+            </label>
+            <label style="flex:1;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+              <input type="radio" name="invite-type" value="facility" style="accent-color:var(--blue)">
+              <div><div style="font-weight:600;font-size:13px">Facility</div><div style="font-size:11.5px;color:var(--g500)">Care org / employer</div></div>
+            </label>
+          </div>
+          <label style="font-size:13px;font-weight:600;color:var(--g700);margin-top:6px">Recipient email</label>
+          <input id="invite-email-input" type="email" placeholder="email@example.com" style="padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;width:100%;box-sizing:border-box">
+          <div id="invite-link-preview" style="display:none;margin-top:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:4px">Invite link</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="invite-link-val" readonly style="flex:1;padding:8px 10px;border:1px solid var(--g200);border-radius:7px;font-size:11.5px;background:var(--g50);color:var(--g700);font-family:var(--mono)">
+              <button class="btn btn-secondary btn-sm" onclick="InviteLink.copyLink()">Copy</button>
+            </div>
+          </div>
+        </div>`,
+      actions: [
+        { label:'Generate &amp; send', cls:'btn-primary', fn:'InviteLink.generate()' },
+        { label:'Cancel', cls:'btn-secondary', fn:'Modal.close()' }
+      ],
+      wide: false
+    });
+  },
+
+  generate(){
+    const email = document.getElementById('invite-email-input')?.value.trim();
+    if(!email || !email.includes('@')){ alert('Please enter a valid recipient email.'); return; }
+    const type = document.querySelector('input[name="invite-type"]:checked')?.value || 'para';
+    const token = Math.random().toString(36).slice(2,10).toUpperCase();
+    const base = location.origin + location.pathname;
+    const link = `${base}?invite=${type}&token=${token}`;
+    const lv = document.getElementById('invite-link-val');
+    const lp = document.getElementById('invite-link-preview');
+    if(lv) lv.value = link;
+    if(lp) lp.style.display = 'block';
+    // Log + notify
+    const label = type === 'para' ? 'Paraprofessional' : 'Facility';
+    ActivityLog.add('Invite', `Invite link sent to ${email}`, `Role: ${label}`, 'Super Admin');
+    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:'Invite sent', text:`${label} invite sent to ${email}.`, cta:null, action:null});
+    // Simulate email send confirmation
+    const foot = document.getElementById('dm-foot');
+    if(foot) foot.innerHTML = `<div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; Invite email sent to ${email}</div><button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
+  },
+
+  copyLink(){
+    const val = document.getElementById('invite-link-val')?.value;
+    if(val && navigator.clipboard) navigator.clipboard.writeText(val).then(()=>alert('Link copied to clipboard.'));
+    else alert('Copy: ' + val);
+  },
+
+  // Called on page load when ?invite= params detected
+  initSignupPage(type){
+    this._type = type;
+    // Hide all normal UI
+    document.getElementById('sb-admin')?.classList.remove('active');
+    document.getElementById('sb-para')?.classList.remove('active');
+    document.getElementById('sb-facility')?.classList.remove('active');
+    document.querySelector('.role-bar')?.style && (document.querySelector('.role-bar').style.display = 'none');
+    document.querySelector('.mobile-nav') && (document.querySelector('.mobile-nav').style.display = 'none');
+    document.querySelector('.app').style.paddingTop = '0';
+    document.querySelector('.layout').style.height = '100vh';
+
+    const page = document.getElementById('invite-signup');
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    page.style.display = 'block';
+
+    const isPara = type === 'para';
+    document.getElementById('invite-signup-title').textContent = isPara
+      ? "You've been invited as a Paraprofessional"
+      : "You've been invited as a Facility";
+    document.getElementById('invite-signup-sub').textContent = isPara
+      ? 'Create your caregiver account — you\'ll be reviewed before your first shift.'
+      : 'Create your facility account — you\'ll be reviewed before posting shifts.';
+
+    const fields = document.getElementById('invite-signup-fields');
+    if(isPara){
+      fields.innerHTML = `
+        <div style="display:grid;gap:14px">
+          <div><label class="form-label">Full name</label><input id="su-name" type="text" placeholder="Maya Rodriguez" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Email address</label><input id="su-email" type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Phone number</label><input id="su-phone" type="tel" placeholder="(415) 555-0100" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">City</label><input id="su-city" type="text" placeholder="San Jose, CA" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Primary credential</label>
+            <select id="su-cred" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
+              <option>CNA — Certified Nursing Assistant</option>
+              <option>HHA — Home Health Aide</option>
+              <option>PCA — Personal Care Aide</option>
+              <option>DSP — Direct Support Professional</option>
+              <option>CMA — Certified Medication Aide</option>
+            </select>
+          </div>
+          <div><label class="form-label">Password</label><input id="su-pass" type="password" placeholder="Create a password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Confirm password</label><input id="su-pass2" type="password" placeholder="Repeat password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+        </div>`;
+    } else {
+      fields.innerHTML = `
+        <div style="display:grid;gap:14px">
+          <div><label class="form-label">Organization name</label><input id="su-name" type="text" placeholder="Riverbend Skilled Nursing" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Contact email</label><input id="su-email" type="email" placeholder="admin@facility.com" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Phone number</label><input id="su-phone" type="tel" placeholder="(408) 555-0100" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">City</label><input id="su-city" type="text" placeholder="Santa Clara, CA" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Business license number</label><input id="su-license" type="text" placeholder="CA-BL-000000" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">EIN (Employer ID Number)</label><input id="su-ein" type="text" placeholder="XX-XXXXXXX" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Password</label><input id="su-pass" type="password" placeholder="Create a password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+          <div><label class="form-label">Confirm password</label><input id="su-pass2" type="password" placeholder="Repeat password" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>
+        </div>`;
+    }
+  },
+
+  submitSignup(){
+    const get = id => (document.getElementById(id)?.value||'').trim();
+    const name  = get('su-name');
+    const email = get('su-email');
+    const phone = get('su-phone');
+    const city  = get('su-city');
+    const pass  = get('su-pass');
+    const pass2 = get('su-pass2');
+    if(!name || !email || !phone || !city || !pass){ alert('Please fill in all required fields.'); return; }
+    if(pass !== pass2){ alert('Passwords do not match.'); return; }
+    const isPara = this._type === 'para';
+    const cred = isPara ? (document.getElementById('su-cred')?.value||'CNA').split('—')[0].trim() : null;
+    const license = !isPara ? get('su-license') : null;
+    const ein = !isPara ? get('su-ein') : null;
+    const newId = Date.now();
+    const entry = {
+      id: newId,
+      name,
+      email,
+      phone,
+      city,
+      role: isPara ? `Paraprofessional · ${cred}` : 'Facility',
+      submitted: 'Just now',
+      docs: isPara ? 'ID pending upload' : 'Business docs pending',
+      status: 'pending',
+      idType: isPara ? 'Government ID (pending)' : 'Business License',
+      idName: name,
+      dob: '—',
+      idExp: '—',
+      credTitle: isPara ? `${cred} certification` : (license ? `License: ${license}` : 'Business License'),
+      credNum: isPara ? 'Pending' : (ein || 'Pending'),
+      credExp: '—',
+      credStatus: 'Pending review',
+      accountAge: 'Just now',
+    };
+    AdminQueue.items.unshift(entry);
+    AdminQueue.renderTable();
+    NotificationBell.push('admin', {ic:'blue', icon:'&#128203;', title:'New signup: '+name, text:`${isPara?'Paraprofessional':'Facility'} account created via invite link. Ready for review.`, cta:'Review', action:()=>{ App.setRole('admin'); AdminQueue.openReview(newId); }});
+    // Show confirmation screen
+    const page = document.getElementById('invite-signup');
+    page.innerHTML = `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:48px;margin-bottom:16px">&#10003;</div>
+        <div style="font-size:22px;font-weight:700;color:var(--navy);margin-bottom:8px">Account submitted!</div>
+        <div style="font-size:14px;color:var(--g500);max-width:360px;margin:0 auto">Your account is pending review by the Proper Staffing team. You'll receive an email once you're approved and can sign in.</div>
+      </div>`;
+  }
+};
+
 renderJobs();
 ShiftPickup.init();
 setInterval(() => ShiftPickup.tick(), 1000);
@@ -6284,8 +6475,17 @@ ActivityLog._renderDashboard();
 Badges.syncAll();
 ProfileState._propagatePara();
 ProfileState._propagateFacility();
-// App opens on the login gate — no role is active until the user signs in.
-App.lgSelect('para');
+// Check for invite link params before showing the normal login gate
+(function(){
+  const params = new URLSearchParams(location.search);
+  const inviteType = params.get('invite');
+  if(inviteType === 'para' || inviteType === 'facility'){
+    InviteLink.initSignupPage(inviteType);
+  } else {
+    // App opens on the login gate — no role is active until the user signs in.
+    App.lgSelect('para');
+  }
+})();
 </script>
 </body>
 </html>
