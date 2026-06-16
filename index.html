@@ -360,9 +360,23 @@
     .grid-2-1,.grid-sidebar-right{grid-template-columns:1fr}
     .doc-info,.doc-info{grid-template-columns:1fr}
   }
-  /* Portrait mobile — hide sidebar, show bottom nav */
+  /* Hamburger button — hidden on desktop */
+  .mob-hamburger{display:none;background:none;border:none;cursor:pointer;color:white;font-size:22px;padding:4px 8px;line-height:1;margin-right:4px}
+
+  /* Sidebar drawer backdrop */
+  .sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:149;backdrop-filter:blur(2px)}
+  .sb-backdrop.open{display:block}
+
+  /* Portrait mobile — drawer sidebar */
   @media (max-width: 680px) and (orientation: portrait){
-    .sidebar{display:none !important}
+    .mob-hamburger{display:block}
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;z-index:150;
+      width:260px;height:100vh;
+      transform:translateX(-100%);transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
+      display:flex !important;box-shadow:4px 0 24px rgba(0,0,0,0.25)
+    }
+    .sidebar.mob-open{transform:translateX(0)}
     .main{padding:18px 16px 90px}
     .role-btns .role-btn{padding:5px 10px;font-size:11px}
     .brand-text{font-size:14px}
@@ -994,7 +1008,9 @@
 </div>
 
 <!-- TOP ROLE BAR -->
+<div class="sb-backdrop" id="sb-backdrop" onclick="App.closeMobSidebar()"></div>
 <div class="role-bar">
+  <button class="mob-hamburger" id="mob-hamburger" onclick="App.toggleMobSidebar()" aria-label="Open menu">&#9776;</button>
   <div class="brand">
     <div class="brand-mark"><span class="ps-logo on-light"></span></div>
     <div>
@@ -2418,6 +2434,19 @@ const App = {
     if(typeof Badges !== 'undefined') Badges.syncAll();
     setTimeout(() => Agreements.maybeShow(role), 350);
   },
+  toggleMobSidebar(){
+    const sb = document.querySelector('.sidebar.active');
+    const bd = document.getElementById('sb-backdrop');
+    if(!sb) return;
+    const open = sb.classList.toggle('mob-open');
+    if(bd) bd.classList.toggle('open', open);
+  },
+  closeMobSidebar(){
+    document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('mob-open'));
+    const bd = document.getElementById('sb-backdrop');
+    if(bd) bd.classList.remove('open');
+  },
+
   logout(){
     this.loggedInRole = null;
     // Reset gate to default selection and show it
@@ -2444,6 +2473,7 @@ const App = {
     this.page = page;
     document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === page));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+    this.closeMobSidebar();
     window.scrollTo({top:0,behavior:'instant'});
     // RULE: opening an inbox clears its unread badge
     if(page === 'para-messages' && typeof Badges !== 'undefined') Badges.clearMessages();
