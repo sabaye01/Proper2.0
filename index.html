@@ -838,7 +838,14 @@
   .lg-signin:hover{background:#1d4ed8}
   .lg-note{text-align:center;font-size:11.5px;color:var(--g400);margin-top:16px;line-height:1.55}
   .lg-error{background:#FEE2E2;border:1px solid #FECACA;color:#B91C1C;border-radius:8px;padding:10px 13px;font-size:12.5px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .lg-success{background:#DCFCE7;border:1px solid #BBF7D0;color:#15803D;border-radius:8px;padding:10px 13px;font-size:12.5px;font-weight:500;margin-bottom:10px;line-height:1.5}
   .lg-field input.lg-input-err{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,0.12)}
+  .lg-forgot{text-align:center;font-size:12px;color:var(--blue);cursor:pointer;margin-top:11px;font-weight:500}
+  .lg-forgot:hover{text-decoration:underline}
+  .lg-forgot-back{font-size:12px;color:var(--blue);cursor:pointer;font-weight:500;margin-bottom:14px;display:inline-flex;align-items:center;gap:5px}
+  .lg-forgot-back:hover{text-decoration:underline}
+  .lg-forgot-title{font-size:17px;font-weight:700;color:var(--g800);margin-bottom:6px}
+  .lg-forgot-sub{font-size:13px;color:var(--g500);line-height:1.55}
   .rb-logout{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);color:white;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;white-space:nowrap}
   .rb-logout:hover{background:rgba(255,255,255,0.26)}
   .rb-userchip{color:rgba(255,255,255,0.88);font-size:12px;font-weight:600;white-space:nowrap}
@@ -978,10 +985,8 @@
 <div class="login-gate" id="login-gate">
   <div class="lg-card">
     <div class="lg-brand"><div class="lg-mark"><span class="ps-logo"></span></div><div class="lg-brand-text">Proper<span>Staffing</span></div></div>
-    <div class="lg-sub" id="lg-sub">Sign in to your account</div>
-
-    <!-- Role tabs (used for sign in + sign up) -->
-    <div class="lg-tabs" id="lg-tabs">
+    <div class="lg-sub">Sign in to your account</div>
+    <div class="lg-tabs">
       <button class="lg-tab active" data-lgrole="para" onclick="App.lgSelect('para')">Paraprofessional</button>
       <button class="lg-tab" data-lgrole="facility" onclick="App.lgSelect('facility')">Facility</button>
       <button class="lg-tab" data-lgrole="admin" onclick="App.lgSelect('admin')">Admin</button>
@@ -989,8 +994,20 @@
     <div class="lg-field"><label>Email</label><input type="email" id="lg-email" placeholder="Enter your email"/></div>
     <div class="lg-field"><label>Password</label><input type="password" id="lg-pass" placeholder="Enter your password"/></div>
     <div class="lg-error" id="lg-error" style="display:none"></div>
-    <button class="lg-signin" onclick="App.login()">Sign in as <span id="lg-role-label">Paraprofessional</span></button>
+    <button class="lg-signin" id="lg-signin-btn" onclick="App.login()">Sign in as <span id="lg-role-label">Paraprofessional</span></button>
+    <div class="lg-forgot" onclick="App.showForgotPassword()">Forgot password?</div>
     <div class="lg-note">Sign in with your role-specific credentials. Select the correct portal tab before signing in.</div>
+
+    <!-- FORGOT PASSWORD VIEW -->
+    <div id="lg-forgot-view" style="display:none">
+      <div class="lg-forgot-back" onclick="App.hideForgotPassword()">&#8592; Back to sign in</div>
+      <div class="lg-forgot-title">Reset your password</div>
+      <div class="lg-forgot-sub">Enter your email address and we'll send you a link to reset your password.</div>
+      <div class="lg-field" style="margin-top:14px"><label>Email address</label><input type="email" id="lg-reset-email" placeholder="Enter your email"/></div>
+      <div class="lg-error" id="lg-reset-error" style="display:none"></div>
+      <div class="lg-success" id="lg-reset-success" style="display:none"></div>
+      <button class="lg-signin" id="lg-reset-btn" onclick="App.sendPasswordReset()">Send reset link</button>
+    </div>
   </div>
 </div>
 
@@ -2413,16 +2430,15 @@ const App = {
     this._applyRole(role);
   },
 
-  // ---- Login gate (real auth backed by Neon) ----
+  // ---- Login gate ----
   loggedInRole: null,
-  currentUser: null,
   lgRole: 'para',
-  lgCurrentMode: 'signin',
-  _resetToken: null,
-
   lgSelect(role){
     this.lgRole = role;
     document.querySelectorAll('.lg-tab').forEach(t => t.classList.toggle('active', t.dataset.lgrole === role));
+    const labels = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
+    const lbl = document.getElementById('lg-role-label');
+    if(lbl) lbl.textContent = labels[role];
   },
   // Demo credentials — each role has its own email+password
   _creds:{
@@ -2478,8 +2494,77 @@ const App = {
     if(chip) chip.textContent = 'Signed in · ' + roleLabels[role];
     this._applyRole(role);
     if(typeof Badges !== 'undefined') Badges.syncAll();
-    setTimeout(() => Agreements.maybeShow(user.role), 350);
+    setTimeout(() => Agreements.maybeShow(role), 350);
   },
+  showForgotPassword(){
+    document.getElementById('lg-forgot-view').style.display = 'block';
+    document.getElementById('lg-signin-btn').style.display = 'none';
+    document.querySelector('.lg-forgot').style.display = 'none';
+    document.querySelector('.lg-tabs').style.display = 'none';
+    document.querySelector('.lg-sub').style.display = 'none';
+    document.getElementById('lg-email').closest('.lg-field').style.display = 'none';
+    document.getElementById('lg-pass').closest('.lg-field').style.display = 'none';
+    document.getElementById('lg-error').style.display = 'none';
+    document.querySelector('.lg-note').style.display = 'none';
+    const resetEmail = document.getElementById('lg-reset-email');
+    const mainEmail = document.getElementById('lg-email').value;
+    if(mainEmail) resetEmail.value = mainEmail;
+    resetEmail.focus();
+  },
+  hideForgotPassword(){
+    document.getElementById('lg-forgot-view').style.display = 'none';
+    document.getElementById('lg-signin-btn').style.display = 'block';
+    document.querySelector('.lg-forgot').style.display = 'block';
+    document.querySelector('.lg-tabs').style.display = 'flex';
+    document.querySelector('.lg-sub').style.display = 'block';
+    document.getElementById('lg-email').closest('.lg-field').style.display = 'block';
+    document.getElementById('lg-pass').closest('.lg-field').style.display = 'block';
+    document.querySelector('.lg-note').style.display = 'block';
+    document.getElementById('lg-reset-error').style.display = 'none';
+    document.getElementById('lg-reset-success').style.display = 'none';
+    document.getElementById('lg-reset-email').value = '';
+  },
+  async sendPasswordReset(){
+    const emailEl = document.getElementById('lg-reset-email');
+    const errEl   = document.getElementById('lg-reset-error');
+    const okEl    = document.getElementById('lg-reset-success');
+    const btn     = document.getElementById('lg-reset-btn');
+    errEl.style.display = 'none';
+    okEl.style.display  = 'none';
+    const email = (emailEl.value || '').trim().toLowerCase();
+    if(!email || !email.includes('@')){
+      errEl.textContent = 'Please enter a valid email address.';
+      errEl.style.display = 'block';
+      emailEl.focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      const res = await fetch('/api/auth/request-reset', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({email})
+      });
+      const data = await res.json();
+      if(data.ok){
+        okEl.innerHTML = '&#10003; If an account with that email exists, a reset link has been sent. Check your inbox.';
+        okEl.style.display = 'block';
+        emailEl.value = '';
+        btn.style.display = 'none';
+      } else {
+        errEl.textContent = data.error || 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+      }
+    } catch(e){
+      errEl.textContent = 'Network error. Please check your connection and try again.';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      if(btn.style.display !== 'none') btn.textContent = 'Send reset link';
+    }
+  },
+
   toggleMobSidebar(){
     const sb = document.querySelector('.sidebar.active');
     const bd = document.getElementById('sb-backdrop');
@@ -2493,40 +2578,16 @@ const App = {
     if(bd) bd.classList.remove('open');
   },
 
-  async logout(){
-    await this._post('/api/auth/logout', {});
+  logout(){
     this.loggedInRole = null;
-    this.currentUser = null;
+    // Reset gate to default selection and show it
     this.lgSelect('para');
-    this.lgMode('signin');
     const gate = document.getElementById('login-gate');
     if(gate) gate.classList.remove('hidden');
     const btns = document.getElementById('role-btns');
     if(btns) btns.style.display = 'none';
     const chip = document.getElementById('rb-userchip');
     if(chip) chip.textContent = '';
-  },
-
-  // Restore an existing session (and handle password-reset links) on load
-  async initAuth(){
-    const params = new URLSearchParams(location.search);
-    const resetToken = params.get('reset_token');
-    if(resetToken){
-      this._resetToken = resetToken;
-      const gate = document.getElementById('login-gate');
-      if(gate) gate.classList.remove('hidden');
-      this.lgMode('reset');
-      return;
-    }
-    try{
-      const res = await fetch('/api/auth/me');
-      const data = await res.json();
-      if(data && data.user){ this._enterApp(data.user); return; }
-    }catch(e){}
-    // Not signed in: ensure the gate is visible in sign-in mode
-    const gate = document.getElementById('login-gate');
-    if(gate) gate.classList.remove('hidden');
-    this.lgMode('signin');
   },
 
   // Earnings are only viewable once a pay schedule is on file
@@ -4936,14 +4997,7 @@ const Professionals = {
 
   notifyOne(worker, cred){
     if(typeof ActivityLog!=='undefined') ActivityLog.add('Credential','Expiration email sent', worker+' \u2014 '+cred, 'Super Admin');
-    Modal.toast('Sending expiration reminder for '+worker+'\u2026');
-    ProperAPI.sendEmail({
-      subject: 'Credential expiration reminder \u2014 '+worker,
-      category: 'credential-reminder',
-      html: '<h2>Credential Expiration Reminder</h2><p><strong>'+worker+'</strong> has a credential that is expired or expiring soon: <strong>'+cred+'</strong>.</p><p>Please upload an updated document to remain eligible for shifts.</p><p>\u2014 Proper Staffing</p>'
-    }).then(r => {
-      Modal.toast(r.ok ? ('Expiration reminder emailed for '+worker+'.') : ('Logged (email not sent): '+(r.error||'')));
-    });
+    Modal.toast('Expiration reminder emailed to '+worker+'.');
   },
 
   notifyAllAtRisk(){
@@ -4951,15 +5005,7 @@ const Professionals = {
     if(at.length === 0){ Modal.toast('No workers are within 60 days of expiration right now.'); return; }
     if(!confirm('Send an expiration reminder email + push notification to '+at.length+' at-risk worker'+(at.length>1?'s':'')+'?')) return;
     at.forEach(p => { if(typeof ActivityLog!=='undefined') ActivityLog.add('Credential','Expiration alert pushed', p.name, 'Super Admin'); });
-    const rows = at.map(p => '<li><strong>'+p.name+'</strong> \u2014 '+(p.role||'')+'</li>').join('');
-    Modal.toast('Sending expiration alerts\u2026');
-    ProperAPI.sendEmail({
-      subject: 'Action needed: '+at.length+' worker'+(at.length>1?'s':'')+' at risk of expiration',
-      category: 'credential-bulk',
-      html: '<h2>'+at.length+' worker'+(at.length>1?'s are':' is')+' at risk</h2><p>The following workers have a government ID or facility credential that is expired or within 60 days of expiring:</p><ul>'+rows+'</ul><p>\u2014 Proper Staffing</p>'
-    }).then(r => {
-      Modal.toast(r.ok ? ('Expiration alert emailed for '+at.length+' worker'+(at.length>1?'s':'')+'.') : ('Logged (email not sent): '+(r.error||'')));
-    });
+    Modal.toast('Expiration alert emailed + pushed to '+at.length+' worker'+(at.length>1?'s':'')+'.');
   },
 
   /* ---- Weekly payroll CSV (Payouts) ---- */
@@ -5728,8 +5774,6 @@ const Theme = {
 };
 Theme.init();
 App.verifBanner();
-// Restore session / handle password-reset links against the live auth backend
-App.initAuth();
 
 const DM = {
   data: {
@@ -7025,133 +7069,6 @@ ProfileState._propagateFacility();
     // App opens on the login gate — no role is active until the user signs in.
     App.lgSelect('para');
   }
-})();
-</script>
-<!-- ===== Live backend: Neon database + Resend email ===== -->
-<script>
-window.ProperAPI = {
-  // Where notification/test emails are delivered. Without a verified domain,
-  // Resend only delivers to the account owner address, so this is editable.
-  notifyTo: 'demo@properstaffing.com',
-  async sendEmail({ to, subject, html, text, category }){
-    try{
-      const res = await fetch('/api/send-email', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ to: to || this.notifyTo, subject, html, text, category })
-      });
-      return await res.json();
-    }catch(e){ return { ok:false, error:String(e) }; }
-  },
-  async getEmailLog(){ try{ return await (await fetch('/api/email-log')).json(); }catch(e){ return { emails:[] }; } },
-  async getInbox(){ try{ return await (await fetch('/api/inbox')).json(); }catch(e){ return { messages:[], unread:0 }; } },
-  async saveContact(data){ try{ return await (await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})).json(); }catch(e){ return { ok:false, error:String(e) }; } }
-};
-
-(function(){
-  var css = document.createElement('style');
-  css.textContent = '\
-  #ec-fab{position:fixed;right:18px;bottom:18px;z-index:9998;background:#111827;color:#fff;border:none;border-radius:999px;padding:12px 16px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;gap:8px}\
-  #ec-fab .ec-dot{background:#ef4444;color:#fff;border-radius:999px;font-size:11px;min-width:18px;height:18px;display:none;align-items:center;justify-content:center;padding:0 5px}\
-  #ec-panel{position:fixed;right:18px;bottom:70px;z-index:9999;width:380px;max-width:calc(100vw - 36px);height:520px;max-height:calc(100vh - 110px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;font-family:inherit}\
-  #ec-panel.open{display:flex}\
-  .ec-head{padding:12px 14px;border-bottom:1px solid #eef0f3;display:flex;align-items:center;justify-content:space-between}\
-  .ec-head strong{font-size:14px;color:#111827}\
-  .ec-tabs{display:flex;border-bottom:1px solid #eef0f3}\
-  .ec-tab{flex:1;padding:9px;font-size:12px;font-weight:600;color:#6b7280;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent}\
-  .ec-tab.active{color:#111827;border-bottom-color:#111827}\
-  .ec-body{flex:1;overflow:auto;padding:10px 12px}\
-  .ec-row{padding:9px 10px;border:1px solid #eef0f3;border-radius:9px;margin-bottom:8px}\
-  .ec-row .ec-sub{font-size:13px;font-weight:600;color:#111827}\
-  .ec-row .ec-meta{font-size:11px;color:#6b7280;margin-top:2px}\
-  .ec-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.02em}\
-  .ec-sent{background:#dcfce7;color:#166534}.ec-err{background:#fee2e2;color:#991b1b}.ec-q{background:#fef9c3;color:#854d0e}\
-  .ec-foot{border-top:1px solid #eef0f3;padding:10px 12px;display:none;flex-direction:column;gap:7px}\
-  .ec-foot.open{display:flex}\
-  .ec-foot input,.ec-foot textarea{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:8px;font-size:12px;font-family:inherit;box-sizing:border-box}\
-  .ec-foot button{background:#111827;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer}\
-  .ec-empty{color:#9ca3af;font-size:12px;text-align:center;padding:24px 8px}\
-  .ec-note{font-size:11px;color:#9ca3af;padding:0 12px 10px}';
-  document.head.appendChild(css);
-
-  var fab = document.createElement('button');
-  fab.id='ec-fab';
-  fab.innerHTML = '\u2709 Email Console <span class="ec-dot" id="ec-unread">0</span>';
-  document.body.appendChild(fab);
-
-  var panel = document.createElement('div');
-  panel.id='ec-panel';
-  panel.innerHTML = '\
-    <div class="ec-head"><strong>Live Email Console</strong>\
-      <button id="ec-compose-toggle" style="background:none;border:none;font-size:18px;cursor:pointer;color:#6b7280">\u270e</button></div>\
-    <div class="ec-tabs">\
-      <button class="ec-tab active" data-tab="sent">Sent</button>\
-      <button class="ec-tab" data-tab="inbox">Inbox</button></div>\
-    <div class="ec-note" id="ec-note"></div>\
-    <div class="ec-body" id="ec-body"><div class="ec-empty">Loading\u2026</div></div>\
-    <div class="ec-foot" id="ec-foot">\
-      <input id="ec-to" placeholder="Send to (your verified email)" />\
-      <input id="ec-subj" placeholder="Subject" />\
-      <textarea id="ec-msg" rows="3" placeholder="Message"></textarea>\
-      <button id="ec-send">Send test email</button></div>';
-  document.body.appendChild(panel);
-
-  var tab='sent';
-  function fmt(d){ try{ return new Date(d).toLocaleString(); }catch(e){ return d; } }
-  function badge(s){ var c = s==='sent'?'ec-sent':(s==='error'?'ec-err':'ec-q'); return '<span class="ec-badge '+c+'">'+s+'</span>'; }
-
-  async function render(){
-    var body = document.getElementById('ec-body');
-    var note = document.getElementById('ec-note');
-    if(tab==='sent'){
-      note.textContent='Outbound emails are logged to the Neon database.';
-      var d = await ProperAPI.getEmailLog();
-      var list = d.emails||[];
-      body.innerHTML = list.length ? list.map(function(e){
-        return '<div class="ec-row"><div style="display:flex;justify-content:space-between;gap:8px"><span class="ec-sub">'+e.subject+'</span>'+badge(e.status)+'</div>\
-          <div class="ec-meta">To: '+e.to_email+'</div><div class="ec-meta">'+fmt(e.created_at)+(e.error?(' \u00b7 '+e.error):'')+'</div></div>';
-      }).join('') : '<div class="ec-empty">No emails sent yet. Use an admin action or compose one.</div>';
-    } else {
-      note.textContent='Inbound webhook is live at /api/inbound. It fills once a domain\u2019s MX records are connected.';
-      var di = await ProperAPI.getInbox();
-      var msgs = di.messages||[];
-      body.innerHTML = msgs.length ? msgs.map(function(m){
-        return '<div class="ec-row"><div class="ec-sub">'+(m.subject||'(no subject)')+'</div>\
-          <div class="ec-meta">From: '+(m.from_name?m.from_name+' ':'')+'&lt;'+m.from_email+'&gt;</div>\
-          <div class="ec-meta">'+fmt(m.received_at)+'</div>'+(m.body_text?('<div class="ec-meta" style="margin-top:6px;color:#374151">'+m.body_text.slice(0,180)+'</div>'):'')+'</div>';
-      }).join('') : '<div class="ec-empty">Inbox is empty. Connect a domain to start receiving live email here.</div>';
-      updateUnread(di.unread||0);
-    }
-  }
-  function updateUnread(n){
-    var dot=document.getElementById('ec-unread');
-    if(n>0){ dot.style.display='inline-flex'; dot.textContent=n; } else { dot.style.display='none'; }
-  }
-
-  fab.addEventListener('click', function(){ panel.classList.toggle('open'); if(panel.classList.contains('open')) render(); });
-  panel.querySelectorAll('.ec-tab').forEach(function(b){
-    b.addEventListener('click', function(){
-      panel.querySelectorAll('.ec-tab').forEach(function(x){x.classList.remove('active');});
-      b.classList.add('active'); tab=b.dataset.tab; render();
-    });
-  });
-  document.getElementById('ec-compose-toggle').addEventListener('click', function(){
-    var f=document.getElementById('ec-foot'); f.classList.toggle('open');
-    document.getElementById('ec-to').value = ProperAPI.notifyTo;
-  });
-  document.getElementById('ec-send').addEventListener('click', async function(){
-    var to=document.getElementById('ec-to').value.trim();
-    var subj=document.getElementById('ec-subj').value.trim();
-    var msg=document.getElementById('ec-msg').value.trim();
-    if(!to||!subj){ alert('Enter a recipient and subject.'); return; }
-    this.textContent='Sending\u2026'; this.disabled=true;
-    var r = await ProperAPI.sendEmail({ to:to, subject:subj, html:'<p>'+msg.replace(/\n/g,'<br>')+'</p>', text:msg, category:'manual' });
-    this.textContent='Send test email'; this.disabled=false;
-    if(r.ok){ document.getElementById('ec-subj').value=''; document.getElementById('ec-msg').value=''; tab='sent'; render(); }
-    else { alert('Could not send: '+(r.error||'unknown')+'\n(The email was still logged to the database.)'); render(); }
-  });
-
-  // Poll inbox unread count periodically
-  (async function poll(){ try{ var d=await ProperAPI.getInbox(); updateUnread(d.unread||0); }catch(e){} setTimeout(poll, 30000); })();
 })();
 </script>
 </body>
