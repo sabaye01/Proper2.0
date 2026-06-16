@@ -125,6 +125,8 @@
   .form-textarea{min-height:84px;resize:vertical;font-family:inherit}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+  .grid-sidebar-right{display:grid;grid-template-columns:1fr 420px;gap:16px}
   .form-help{font-size:11px;color:var(--g500);margin-top:5px}
   .form-section{margin-bottom:18px}
   .form-section-title{font-size:13px;font-weight:600;color:var(--g700);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)}
@@ -159,14 +161,17 @@
   .pill-cred{background:var(--indigo-light);color:var(--indigo)}
 
   /* TABLES */
-  .table-wrap{background:white;border:1px solid var(--g200);border-radius:10px;overflow:hidden;margin-bottom:14px}
-  .data-table{width:100%;border-collapse:collapse}
+  .table-wrap{background:white;border:1px solid var(--g200);border-radius:10px;overflow-x:auto;overflow-y:hidden;margin-bottom:14px;-webkit-overflow-scrolling:touch}
+  .data-table{width:100%;border-collapse:collapse;min-width:520px}
   .data-table th{text-align:left;padding:12px 14px;font-size:10.5px;text-transform:uppercase;color:var(--g500);font-weight:700;letter-spacing:0.6px;border-bottom:1px solid var(--g200);background:var(--g50)}
   .data-table td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--g100);color:var(--g700)}
   .data-table tr:last-child td{border-bottom:none}
   .data-table tbody tr:hover{background:var(--g50)}
-  .td-actions{text-align:right;white-space:nowrap}
+  .td-actions{text-align:right;white-space:nowrap;position:sticky;right:0;background:white;box-shadow:-4px 0 8px rgba(0,0,0,0.04)}
   .td-actions .btn{margin-left:6px}
+  .data-table thead th:last-child{position:sticky;right:0;background:var(--g50);box-shadow:-4px 0 8px rgba(0,0,0,0.04)}
+  [data-theme="dark"] .td-actions{background:var(--surface-1)}
+  [data-theme="dark"] .data-table thead th:last-child{background:var(--surface-2)}
 
   /* JOB CARDS */
   .job-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
@@ -335,6 +340,25 @@
     .sidebar{width:200px}
     .main{padding:22px 20px 50px}
     .doc-review{grid-template-columns:1fr}
+    .doc-info{grid-template-columns:1fr}
+    .form-row{grid-template-columns:1fr}
+    .form-row-3{grid-template-columns:1fr 1fr}
+    .chat-layout{grid-template-columns:220px 1fr;height:480px}
+    .stats-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    .grid-2-1{grid-template-columns:1fr}
+    .grid-sidebar-right{grid-template-columns:1fr}
+  }
+  @media (max-width: 680px){
+    .form-row,.form-row-3{grid-template-columns:1fr}
+    .chat-layout{grid-template-columns:1fr;height:auto}
+    .chat-list{border-right:none;border-bottom:1px solid var(--g200);max-height:220px}
+    .stats-grid{grid-template-columns:1fr 1fr}
+    .summary-row{flex-direction:column}
+    .summary-tile{min-width:unset}
+    .dm-kv{grid-template-columns:1fr;gap:4px}
+    .cal-grid{gap:3px}
+    .grid-2-1,.grid-sidebar-right{grid-template-columns:1fr}
+    .doc-info,.doc-info{grid-template-columns:1fr}
   }
   /* Portrait mobile — hide sidebar, show bottom nav */
   @media (max-width: 680px) and (orientation: portrait){
@@ -1567,7 +1591,7 @@
     <div class="stat"><div class="stat-label">Verified facilities</div><div class="stat-value">47</div><div class="stat-delta">+1 this week</div></div>
     <div class="stat"><div class="stat-label">Avg verification time</div><div class="stat-value">8h</div><div class="stat-delta">-2h vs last week</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+  <div class="grid-2-1">
     <div class="card">
       <div class="card-title">Recent admin activity <a onclick="App.setPage('admin-logs')" style="font-size:12px;color:var(--blue);cursor:pointer;font-weight:600">View all logs &rarr;</a></div>
       <table class="data-table" style="margin:-20px;width:calc(100% + 40px)">
@@ -1979,7 +2003,7 @@
   <div class="page-head"><div><div class="page-title">CNA — Overnight</div><div class="page-sub">Sunny Care Center · Today 7:00pm – 7:00am</div></div>
     <div class="page-head-right"><span class="badge badge-active">Confirmed</span></div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 420px;gap:16px" id="shift-detail-grid">
+  <div class="grid-sidebar-right" id="shift-detail-grid">
     <div>
       <div class="card">
         <div class="card-title">Shift logistics</div>
@@ -4372,7 +4396,7 @@ const AdminShiftMgr = {
         </div>
         <div class="asm-edit-form${isEditing?' show':''}" id="asm-ef-${i}">
           <div style="font-size:13px;font-weight:600;color:var(--g800);margin-bottom:12px">Edit shift details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="form-row" style="margin-bottom:12px">
             <div><label class="form-label" style="font-size:12px">Pay rate ($/hr)</label><input class="form-input" id="asm-edit-pay-${i}" type="number" value="${s.pay}"/></div>
             <div><label class="form-label" style="font-size:12px">Shift time</label><input class="form-input" id="asm-edit-time-${i}" value="${s.shift}"/></div>
           </div>
