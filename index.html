@@ -378,33 +378,35 @@
   .sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:149;backdrop-filter:blur(2px)}
   .sb-backdrop.open{display:block}
 
-  /* Portrait mobile — drawer sidebar */
-  @media (max-width: 680px) and (orientation: portrait){
+  /* Shared drawer behaviour — portrait phones + landscape phones */
+  @media (max-width: 680px), (max-height: 500px) and (orientation: landscape){
     .mob-hamburger{display:block}
+    /* Pull sidebar fully out of the flex flow so .main fills 100% width */
     .sidebar{
       position:fixed;top:0;left:0;bottom:0;z-index:150;
-      width:260px;height:100vh;
-      transform:translateX(-100%);transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
-      display:flex !important;box-shadow:4px 0 24px rgba(0,0,0,0.25)
+      width:270px;max-width:80vw;height:100vh;
+      transform:translateX(-100%);
+      transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
+      display:flex !important;
+      box-shadow:4px 0 24px rgba(0,0,0,0.25);
+      overflow-y:auto;overflow-x:hidden
     }
     .sidebar.mob-open{transform:translateX(0)}
-    .main{padding:18px 16px 90px}
+    /* Main fills the full viewport width */
+    .main{
+      width:100%;
+      min-width:0;
+      padding:18px 16px 90px;
+      overflow-x:hidden
+    }
+    .mobile-nav{display:none !important}
     .role-btns .role-btn{padding:5px 10px;font-size:11px}
     .brand-text{font-size:14px}
-    .mobile-nav{display:flex !important}
   }
-  /* Landscape mobile — collapse sidebar to icon rail */
-  @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px){
-    .sidebar{width:58px;overflow:hidden}
-    .sidebar .sb-brand-area,.sidebar .sb-label,.sidebar .u-name,.sidebar .u-role,.sidebar .sb-brand-name,.sidebar .sb-brand-tag{display:none}
-    .sidebar .nav-item{justify-content:center;padding:10px 0;gap:0}
-    .sidebar .nav-item span:not(.nav-icon):not(.nav-badge){display:none}
-    .sidebar .nav-icon{width:100%;text-align:center;font-size:16px}
-    .sidebar .sb-footer{padding:10px 0;display:flex;justify-content:center}
-    .sidebar .avatar{width:30px;height:30px;font-size:11px}
-    .sidebar .user-chip > div:last-child{display:none}
-    .main{padding:14px 12px 20px}
-    .mobile-nav{display:none !important}
+  /* Portrait phones only — show bottom nav */
+  @media (max-width: 680px) and (orientation: portrait){
+    .main{padding:18px 16px 90px}
+    .mobile-nav{display:flex !important}
   }
 
   /* ===== V2: APPLICATION STEPPER ===== */
