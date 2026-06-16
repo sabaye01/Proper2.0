@@ -1102,7 +1102,6 @@
     <div class="nav-item active" data-page="admin-dashboard" onclick="App.setPage('admin-dashboard')"><span class="nav-icon">&#9638;</span>Dashboard</div>
     <div class="nav-item" data-page="admin-queue" onclick="App.setPage('admin-queue')"><span class="nav-icon">&#128203;</span>Verification Queue<span class="nav-badge" id="badge-admin-queue">7</span></div>
     <div class="nav-item" onclick="InviteLink.openModal()"><span class="nav-icon">&#128231;</span>Send Invite Link</div>
-    <div class="nav-item" data-page="admin-invite-log" onclick="App.setPage('admin-invite-log')"><span class="nav-icon">&#128196;</span>Invite Activity</div>
     <div class="nav-item" data-page="admin-jobs" onclick="App.setPage('admin-jobs')"><span class="nav-icon">&#128188;</span>Job Management</div>
     <div class="nav-item" data-page="admin-professionals" onclick="App.setPage('admin-professionals')"><span class="nav-icon">&#128101;</span>Professionals</div>
     <div class="nav-item" data-page="admin-facilities" onclick="App.setPage('admin-facilities')"><span class="nav-icon">&#127970;</span>Facilities</div>
@@ -1928,6 +1927,7 @@
       <option value="Credential">Credential edits</option>
       <option value="Job">Job postings</option>
       <option value="Admin">Admin accounts</option>
+      <option value="Invite">Invites</option>
     </select>
     <select class="form-select" style="max-width:180px" id="logs-filter-admin" onchange="ActivityLog.filter()">
       <option value="all">All admins</option>
@@ -1939,8 +1939,8 @@
     <span id="logs-match-count" style="font-size:12px;color:var(--g500);margin-left:4px"></span>
   </div>
   <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Timestamp</th><th>Admin</th><th>Category</th><th>Action</th><th>Target</th></tr></thead>
+    <table class="data-table" id="logs-table">
+      <thead id="logs-thead"><tr><th>Timestamp</th><th>Admin</th><th>Category</th><th>Action</th><th>Target</th></tr></thead>
       <tbody id="logs-tbody"></tbody>
     </table>
   </div>
@@ -2280,44 +2280,6 @@
     <table class="data-table">
       <thead><tr><th>ID</th><th>Type</th><th>Parties</th><th>Detail</th><th>Status</th><th></th></tr></thead>
       <tbody id="admin-disputes-tbody"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===================== INVITE ACTIVITY LOG ===================== -->
-<div class="page" id="admin-invite-log">
-  <div class="page-head">
-    <div>
-      <div class="page-title">Invite Activity</div>
-      <div class="page-sub" id="invite-log-sub">All invite links sent — track status and resend as needed.</div>
-    </div>
-    <div class="page-head-right">
-      <button class="btn btn-primary" onclick="InviteLink.openModal()">&#128231; Send invite link</button>
-      <button class="btn btn-secondary" onclick="InviteActivityLog.exportCSV()">&#11015; Export CSV</button>
-    </div>
-  </div>
-
-  <!-- Filter tabs -->
-  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
-    <button class="btn btn-primary btn-sm" id="ial-tab-all"      onclick="InviteActivityLog.filter('all')">All</button>
-    <button class="btn btn-ghost btn-sm"  id="ial-tab-para"     onclick="InviteActivityLog.filter('para')">Paraprofessional</button>
-    <button class="btn btn-ghost btn-sm"  id="ial-tab-facility" onclick="InviteActivityLog.filter('facility')">Facility</button>
-    <button class="btn btn-ghost btn-sm"  id="ial-tab-admin"    onclick="InviteActivityLog.filter('admin')">Admin</button>
-  </div>
-
-  <div class="table-wrap">
-    <table class="data-table" id="invite-log-table">
-      <thead>
-        <tr>
-          <th>Recipient</th>
-          <th>Type</th>
-          <th>Sent by</th>
-          <th>Date sent</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="invite-log-tbody"></tbody>
     </table>
   </div>
 </div>
@@ -4941,6 +4903,7 @@ const ActivityLog = {
     'Credential':'lb-credential',
     'Job'       :'lb-job',
     'Admin'     :'lb-admin',
+    'Invite'    :'lb-default',
   },
 
   _now(){
@@ -4978,13 +4941,49 @@ const ActivityLog = {
 
   render(){
     const tbody = document.getElementById('logs-tbody');
+    const thead = document.getElementById('logs-thead');
     if(!tbody) return;
-    const catF   = this._filterCat;
-    const admF   = this._filterAdmin;
-    const dateF  = (document.getElementById('logs-filter-date')||{}).value||'';
+    const catF  = this._filterCat;
+    const admF  = this._filterAdmin;
+    const dateF = (document.getElementById('logs-filter-date')||{}).value||'';
+
+    // Invite view — delegate to InviteActivityLog data
+    if(catF === 'Invite'){
+      if(thead) thead.innerHTML = '<tr><th>Recipient</th><th>Type</th><th>Sent by</th><th>Date sent</th><th>Status</th><th></th></tr>';
+      const statusBadge = s => ({
+        pending:  '<span class="badge badge-pending">Pending</span>',
+        accepted: '<span class="badge badge-verified">Accepted</span>',
+        expired:  '<span class="badge" style="background:var(--g200);color:var(--g600)">Expired</span>',
+      }[s] || s);
+      let invites = typeof InviteActivityLog !== 'undefined' ? InviteActivityLog.items : [];
+      if(admF !== 'all') invites = invites.filter(i => i.sentBy.toLowerCase().includes(admF.toLowerCase()));
+      tbody.innerHTML = invites.length
+        ? invites.map(i => `
+            <tr>
+              <td style="font-weight:600">${i.email}</td>
+              <td>${i.label}</td>
+              <td style="color:var(--g600)">${i.sentBy}</td>
+              <td style="white-space:nowrap;color:var(--g600)">${i.date} <span style="color:var(--g400);font-size:11.5px">${i.time}</span></td>
+              <td>${statusBadge(i.status)}</td>
+              <td class="td-actions">
+                ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.resend('${i.email}','${i.type}','${i.label}')">Resend</button>`:''}
+                ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.copyLink('${i.link||''}','${i.token}','${i.type}')">Copy link</button>`:''}
+              </td>
+            </tr>`).join('')
+        : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No invite records found.</td></tr>`;
+      const sub = document.getElementById('logs-sub');
+      const pending = invites.filter(i=>i.status==='pending').length;
+      if(sub) sub.textContent = `${invites.length} invite${invites.length!==1?'s':''} · ${pending} pending · exportable as CSV`;
+      const mc = document.getElementById('logs-match-count');
+      if(mc) mc.textContent = '';
+      return;
+    }
+
+    // Standard log view
+    if(thead) thead.innerHTML = '<tr><th>Timestamp</th><th>Admin</th><th>Category</th><th>Action</th><th>Target</th></tr>';
     const show = this.entries.filter(e =>
-      (catF   === 'all' || e.cat.toLowerCase().includes(catF.toLowerCase())) &&
-      (admF   === 'all' || e.admin.toLowerCase().includes(admF.toLowerCase())) &&
+      (catF === 'all' || e.cat.toLowerCase().includes(catF.toLowerCase())) &&
+      (admF === 'all' || e.admin.toLowerCase().includes(admF.toLowerCase())) &&
       (!dateF || e.ts.startsWith(dateF))
     );
     const badgeClass = cat => this._catBadge[cat] || 'lb-default';
@@ -4998,7 +4997,6 @@ const ActivityLog = {
             <td style="color:var(--g600)">${e.target}</td>
           </tr>`).join('')
       : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No log entries match this filter.</td></tr>`;
-
     const sub = document.getElementById('logs-sub');
     if(sub) sub.textContent = `${this.entries.length} total entries${show.length !== this.entries.length ? ` · ${show.length} shown` : ''} · exportable as CSV`;
     const mc = document.getElementById('logs-match-count');
@@ -5036,10 +5034,18 @@ const ActivityLog = {
   },
 
   exportCSV(){
-    const header = 'Timestamp,Admin,Role,Category,Action,Target\n';
-    const rows = this.entries.map(e =>
-      `"${e.ts}","${e.admin}","${e.role}","${e.cat}","${e.action}","${e.target}"`
-    ).join('\n');
+    let header, rows;
+    if(this._filterCat === 'Invite' && typeof InviteActivityLog !== 'undefined'){
+      header = 'Recipient,Type,Sent By,Date,Time,Status,Token\n';
+      rows = InviteActivityLog.items.map(i =>
+        `"${i.email}","${i.label}","${i.sentBy}","${i.date}","${i.time}","${i.status}","${i.token}"`
+      ).join('\n');
+    } else {
+      header = 'Timestamp,Admin,Role,Category,Action,Target\n';
+      rows = this.entries.map(e =>
+        `"${e.ts}","${e.admin}","${e.role}","${e.cat}","${e.action}","${e.target}"`
+      ).join('\n');
+    }
     const blob = new Blob([header + rows], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -6886,7 +6892,6 @@ Sites.renderAll();
 FacilityJobs.renderTable();
 JobCredentials.renderBox();
 AdminQueue.renderTable();
-InviteActivityLog.render();
 AdminDisputes.renderTable();
 Professionals.renderRoster();Professionals.renderMonitoring();AdminFacilities.render();ActivityLog.render();
 ActivityLog._renderDashboard();
