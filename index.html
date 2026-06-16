@@ -1102,6 +1102,7 @@
     <div class="nav-item active" data-page="admin-dashboard" onclick="App.setPage('admin-dashboard')"><span class="nav-icon">&#9638;</span>Dashboard</div>
     <div class="nav-item" data-page="admin-queue" onclick="App.setPage('admin-queue')"><span class="nav-icon">&#128203;</span>Verification Queue<span class="nav-badge" id="badge-admin-queue">7</span></div>
     <div class="nav-item" onclick="InviteLink.openModal()"><span class="nav-icon">&#128231;</span>Send Invite Link</div>
+    <div class="nav-item" data-page="admin-invite-log" onclick="App.setPage('admin-invite-log')"><span class="nav-icon">&#128196;</span>Invite Activity</div>
     <div class="nav-item" data-page="admin-jobs" onclick="App.setPage('admin-jobs')"><span class="nav-icon">&#128188;</span>Job Management</div>
     <div class="nav-item" data-page="admin-professionals" onclick="App.setPage('admin-professionals')"><span class="nav-icon">&#128101;</span>Professionals</div>
     <div class="nav-item" data-page="admin-facilities" onclick="App.setPage('admin-facilities')"><span class="nav-icon">&#127970;</span>Facilities</div>
@@ -2279,6 +2280,44 @@
     <table class="data-table">
       <thead><tr><th>ID</th><th>Type</th><th>Parties</th><th>Detail</th><th>Status</th><th></th></tr></thead>
       <tbody id="admin-disputes-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===================== INVITE ACTIVITY LOG ===================== -->
+<div class="page" id="admin-invite-log">
+  <div class="page-head">
+    <div>
+      <div class="page-title">Invite Activity</div>
+      <div class="page-sub" id="invite-log-sub">All invite links sent — track status and resend as needed.</div>
+    </div>
+    <div class="page-head-right">
+      <button class="btn btn-primary" onclick="InviteLink.openModal()">&#128231; Send invite link</button>
+      <button class="btn btn-secondary" onclick="InviteActivityLog.exportCSV()">&#11015; Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-primary btn-sm" id="ial-tab-all"      onclick="InviteActivityLog.filter('all')">All</button>
+    <button class="btn btn-ghost btn-sm"  id="ial-tab-para"     onclick="InviteActivityLog.filter('para')">Paraprofessional</button>
+    <button class="btn btn-ghost btn-sm"  id="ial-tab-facility" onclick="InviteActivityLog.filter('facility')">Facility</button>
+    <button class="btn btn-ghost btn-sm"  id="ial-tab-admin"    onclick="InviteActivityLog.filter('admin')">Admin</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table" id="invite-log-table">
+      <thead>
+        <tr>
+          <th>Recipient</th>
+          <th>Type</th>
+          <th>Sent by</th>
+          <th>Date sent</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="invite-log-tbody"></tbody>
     </table>
   </div>
 </div>
@@ -6317,6 +6356,102 @@ const Tooltip = {
   }
 };
 /* ============================================================
+   INVITE ACTIVITY LOG — tracks all invite links sent
+   ============================================================ */
+const InviteActivityLog = {
+  _filter: 'all',
+  items: [
+    {email:'devon.j@example.com',   type:'para',     label:'Paraprofessional', token:'A1B2C3D4', sentBy:'Super Admin', date:'Jun 10, 2026', time:'9:14 AM',  status:'accepted'},
+    {email:'p.patel@example.com',   type:'para',     label:'Paraprofessional', token:'E5F6G7H8', sentBy:'Super Admin', date:'Jun 10, 2026', time:'9:15 AM',  status:'accepted'},
+    {email:'j.liu@example.com',     type:'para',     label:'Paraprofessional', token:'I9J0K1L2', sentBy:'Sarah Kim',   date:'Jun 11, 2026', time:'11:02 AM', status:'pending'},
+    {email:'tricia.n@example.com',  type:'para',     label:'Paraprofessional', token:'M3N4O5P6', sentBy:'Sarah Kim',   date:'Jun 11, 2026', time:'11:03 AM', status:'pending'},
+    {email:'marcus.w@example.com',  type:'para',     label:'Paraprofessional', token:'Q7R8S9T0', sentBy:'Sarah Kim',   date:'Jun 11, 2026', time:'11:04 AM', status:'expired'},
+    {email:'admin@riverbend.com',   type:'facility', label:'Facility',         token:'U1V2W3X4', sentBy:'Super Admin', date:'Jun 12, 2026', time:'2:30 PM',  status:'accepted'},
+    {email:'hr@maplesnr.com',       type:'facility', label:'Facility',         token:'Y5Z6A7B8', sentBy:'Super Admin', date:'Jun 12, 2026', time:'2:31 PM',  status:'pending'},
+    {email:'ops@sunnycare.com',     type:'facility', label:'Facility',         token:'C9D0E1F2', sentBy:'Mike Rivera', date:'Jun 13, 2026', time:'10:00 AM', status:'pending'},
+    {email:'contact@bayside.com',   type:'facility', label:'Facility',         token:'G3H4I5J6', sentBy:'Mike Rivera', date:'Jun 13, 2026', time:'10:01 AM', status:'expired'},
+    {email:'sarah@properstaffing.com',type:'admin',  label:'Admin',            token:'K7L8M9N0', sentBy:'Super Admin', date:'Jun 9, 2026',  time:'8:00 AM',  status:'accepted'},
+    {email:'mike@properstaffing.com', type:'admin',  label:'Admin',            token:'O1P2Q3R4', sentBy:'Super Admin', date:'Jun 9, 2026',  time:'8:01 AM',  status:'accepted'},
+    {email:'jamie@properstaffing.com',type:'admin',  label:'Admin',            token:'S5T6U7V8', sentBy:'Super Admin', date:'Jun 9, 2026',  time:'8:02 AM',  status:'accepted'},
+  ],
+
+  add(entry){ this.items.unshift(entry); this.render(); },
+
+  _statusBadge(s){
+    const map = {
+      pending:  '<span class="badge badge-pending">Pending</span>',
+      accepted: '<span class="badge badge-verified">Accepted</span>',
+      expired:  '<span class="badge" style="background:var(--g200);color:var(--g600)">Expired</span>',
+    };
+    return map[s] || s;
+  },
+
+  filter(val){
+    this._filter = val;
+    // Update tab styles
+    ['all','para','facility','admin'].forEach(k => {
+      const el = document.getElementById(`ial-tab-${k}`);
+      if(!el) return;
+      el.className = k === val ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+    });
+    this.render();
+  },
+
+  render(){
+    const tbody = document.getElementById('invite-log-tbody');
+    const sub   = document.getElementById('invite-log-sub');
+    if(!tbody) return;
+    const show = this._filter === 'all' ? this.items : this.items.filter(i => i.type === this._filter);
+    if(sub) sub.textContent = `${show.length} invite${show.length!==1?'s':''} · ${this.items.filter(i=>i.status==='pending').length} pending`;
+    tbody.innerHTML = show.length ? show.map(i => `
+      <tr>
+        <td><div style="font-weight:600;font-size:13px">${i.email}</div></td>
+        <td>${i.label}</td>
+        <td style="color:var(--g600)">${i.sentBy}</td>
+        <td style="color:var(--g600);white-space:nowrap">${i.date} <span style="color:var(--g400);font-size:11.5px">${i.time}</span></td>
+        <td>${this._statusBadge(i.status)}</td>
+        <td class="td-actions">
+          ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.resend('${i.email}','${i.type}','${i.label}')">Resend</button>`:''}
+          ${i.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="InviteActivityLog.copyLink('${i.link||''}','${i.token}','${i.type}')">Copy link</button>`:''}
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No invite records found</td></tr>`;
+  },
+
+  resend(email, type, label){
+    const base = location.origin + location.pathname;
+    const token = Math.random().toString(36).slice(2,10).toUpperCase();
+    const now = new Date();
+    this.items.unshift({ email, type, label, token,
+      link: `${base}?invite=${type}&token=${token}`,
+      sentBy:'Super Admin',
+      date: now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      time: now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+      status:'pending'
+    });
+    this.render();
+    alert(`Invite resent to ${email}`);
+  },
+
+  copyLink(link, token, type){
+    const base = location.origin + location.pathname;
+    const url = link || `${base}?invite=${type}&token=${token}`;
+    if(navigator.clipboard) navigator.clipboard.writeText(url).then(()=>alert('Link copied to clipboard.'));
+    else alert(url);
+  },
+
+  exportCSV(){
+    const rows = [['Recipient','Type','Sent By','Date','Time','Status','Token']];
+    this.items.forEach(i => rows.push([i.email, i.label, i.sentBy, i.date, i.time, i.status, i.token]));
+    const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'invite-activity.csv';
+    a.click();
+  }
+};
+
+/* ============================================================
    ADMIN INVITES — pending admin signups awaiting permission setup
    ============================================================ */
 const AdminInvites = {
@@ -6454,67 +6589,153 @@ Tooltip.init();
    INVITE LINK — admin sends role-specific signup links
    ============================================================ */
 const InviteLink = {
-  _type: null, // 'para' | 'facility' | 'admin'
+  _type: null,
+  _rowId: 0,
 
   openModal(){
+    this._rowId = 0;
     Modal.open({
       badge: 'Send Invite',
-      title: 'Send an invite link',
-      sub: 'Choose who you want to invite. They\'ll receive a link to create their account.',
+      title: 'Send invite links',
+      sub: 'Choose a role, add recipients, then send all at once.',
+      wide: true,
       bodyHTML: `
-        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-          <label style="font-size:13px;font-weight:600;color:var(--g700)">Invite type</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label style="flex:1;min-width:130px;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
-              <input type="radio" name="invite-type" value="para" checked style="accent-color:var(--blue)">
-              <div><div style="font-weight:600;font-size:13px">Paraprofessional</div><div style="font-size:11.5px;color:var(--g500)">Worker / caregiver</div></div>
-            </label>
-            <label style="flex:1;min-width:130px;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
-              <input type="radio" name="invite-type" value="facility" style="accent-color:var(--blue)">
-              <div><div style="font-weight:600;font-size:13px">Facility</div><div style="font-size:11.5px;color:var(--g500)">Care org / employer</div></div>
-            </label>
-            <label style="flex:1;min-width:130px;border:1px solid var(--g200);border-radius:10px;padding:14px 12px;cursor:pointer;display:flex;align-items:center;gap:10px">
-              <input type="radio" name="invite-type" value="admin" style="accent-color:var(--blue)">
-              <div><div style="font-weight:600;font-size:13px">Admin</div><div style="font-size:11.5px;color:var(--g500)">Proper Staffing staff</div></div>
-            </label>
-          </div>
-          <label style="font-size:13px;font-weight:600;color:var(--g700);margin-top:6px">Recipient email</label>
-          <input id="invite-email-input" type="email" placeholder="email@example.com" style="padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;width:100%;box-sizing:border-box">
-          <div id="invite-link-preview" style="display:none;margin-top:8px">
-            <div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:4px">Invite link</div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input id="invite-link-val" readonly style="flex:1;padding:8px 10px;border:1px solid var(--g200);border-radius:7px;font-size:11.5px;background:var(--g50);color:var(--g700);font-family:var(--mono)">
-              <button class="btn btn-secondary btn-sm" onclick="InviteLink.copyLink()">Copy</button>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+          <div>
+            <label style="font-size:13px;font-weight:600;color:var(--g700);display:block;margin-bottom:8px">Invite type</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="flex:1;min-width:120px;border:1px solid var(--g200);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                <input type="radio" name="invite-type" value="para" checked style="accent-color:var(--blue)">
+                <div><div style="font-weight:600;font-size:13px">Paraprofessional</div><div style="font-size:11px;color:var(--g500)">Worker / caregiver</div></div>
+              </label>
+              <label style="flex:1;min-width:120px;border:1px solid var(--g200);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                <input type="radio" name="invite-type" value="facility" style="accent-color:var(--blue)">
+                <div><div style="font-weight:600;font-size:13px">Facility</div><div style="font-size:11px;color:var(--g500)">Care org / employer</div></div>
+              </label>
+              <label style="flex:1;min-width:120px;border:1px solid var(--g200);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+                <input type="radio" name="invite-type" value="admin" style="accent-color:var(--blue)">
+                <div><div style="font-weight:600;font-size:13px">Admin</div><div style="font-size:11px;color:var(--g500)">Proper Staffing staff</div></div>
+              </label>
             </div>
           </div>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <label style="font-size:13px;font-weight:600;color:var(--g700)">Recipients</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn btn-ghost btn-sm" id="il-del-selected" style="display:none;color:var(--red)" onclick="InviteLink.deleteSelected()">&#128465; Delete selected</button>
+                <button class="btn btn-secondary btn-sm" onclick="InviteLink.addRow()">&#43; Add recipient</button>
+              </div>
+            </div>
+            <div style="background:var(--g50);border:1px solid var(--g200);border-radius:10px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:28px 1fr auto;gap:0;padding:8px 12px;border-bottom:1px solid var(--g200);background:white">
+                <input type="checkbox" id="il-check-all" style="accent-color:var(--blue)" onchange="InviteLink.toggleAll(this.checked)">
+                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--g500);padding-left:8px;line-height:28px">Email address</span>
+                <span></span>
+              </div>
+              <div id="il-rows" style="max-height:220px;overflow-y:auto"></div>
+            </div>
+            <div style="font-size:11.5px;color:var(--g400);margin-top:6px" id="il-count-label">0 recipients</div>
+          </div>
         </div>`,
-      actions: [
-        { label:'Generate &amp; send', cls:'btn-primary', fn:'InviteLink.generate()' },
+      actions:[
+        { label:'Send all invites', cls:'btn-primary', fn:'InviteLink.generate()' },
         { label:'Cancel', cls:'btn-secondary', fn:'Modal.close()' }
-      ],
-      wide: false
+      ]
     });
+    this.addRow();
+  },
+
+  addRow(){
+    const id = ++this._rowId;
+    const container = document.getElementById('il-rows');
+    if(!container) return;
+    const row = document.createElement('div');
+    row.id = `il-row-${id}`;
+    row.style.cssText = 'display:grid;grid-template-columns:28px 1fr auto;gap:0;padding:8px 12px;border-bottom:1px solid var(--g100);align-items:center;background:white';
+    row.innerHTML = `
+      <input type="checkbox" class="il-row-cb" data-row="${id}" style="accent-color:var(--blue)" onchange="InviteLink._onCbChange()">
+      <input type="email" id="il-email-${id}" placeholder="email@example.com"
+        style="margin-left:8px;padding:7px 10px;border:1px solid var(--g200);border-radius:7px;font-size:13px;width:100%;box-sizing:border-box;background:white"
+        oninput="InviteLink._updateCount()">
+      <button onclick="InviteLink.deleteRow(${id})" title="Remove"
+        style="background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;padding:4px 8px;line-height:1;margin-left:6px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g400)'">&#215;</button>`;
+    container.appendChild(row);
+    this._updateCount();
+    document.getElementById(`il-email-${id}`)?.focus();
+  },
+
+  deleteRow(id){
+    document.getElementById(`il-row-${id}`)?.remove();
+    this._updateCount();
+    this._onCbChange();
+    if(!document.getElementById('il-rows')?.children.length) this.addRow();
+  },
+
+  deleteSelected(){
+    document.querySelectorAll('.il-row-cb:checked').forEach(cb => {
+      document.getElementById(`il-row-${cb.dataset.row}`)?.remove();
+    });
+    this._updateCount();
+    this._onCbChange();
+    if(!document.getElementById('il-rows')?.children.length) this.addRow();
+  },
+
+  toggleAll(checked){
+    document.querySelectorAll('.il-row-cb').forEach(cb => cb.checked = checked);
+    this._onCbChange();
+  },
+
+  _onCbChange(){
+    const any = !!document.querySelector('.il-row-cb:checked');
+    const delBtn = document.getElementById('il-del-selected');
+    if(delBtn) delBtn.style.display = any ? '' : 'none';
+    const allCb = document.getElementById('il-check-all');
+    if(allCb){
+      const total = document.querySelectorAll('.il-row-cb').length;
+      const checked = document.querySelectorAll('.il-row-cb:checked').length;
+      allCb.indeterminate = checked > 0 && checked < total;
+      allCb.checked = total > 0 && checked === total;
+    }
+  },
+
+  _updateCount(){
+    const emails = [...document.querySelectorAll('[id^="il-email-"]')].map(i=>i.value.trim()).filter(v=>v);
+    const lbl = document.getElementById('il-count-label');
+    if(lbl) lbl.textContent = `${document.querySelectorAll('[id^="il-email-"]').length} recipient row${document.querySelectorAll('[id^="il-email-"]').length===1?'':'s'} · ${emails.length} email${emails.length===1?'':'s'} entered`;
   },
 
   generate(){
-    const email = document.getElementById('invite-email-input')?.value.trim();
-    if(!email || !email.includes('@')){ alert('Please enter a valid recipient email.'); return; }
     const type = document.querySelector('input[name="invite-type"]:checked')?.value || 'para';
-    const token = Math.random().toString(36).slice(2,10).toUpperCase();
+    const inputs = [...document.querySelectorAll('[id^="il-email-"]')];
+    const emails = inputs.map(i=>i.value.trim()).filter(v=>v && v.includes('@'));
+    const invalid = inputs.map(i=>i.value.trim()).filter(v=>v && !v.includes('@'));
+    if(!emails.length){ alert('Please enter at least one valid email address.'); return; }
+    if(invalid.length){ alert(`These don't look like valid emails:\n${invalid.join('\n')}`); return; }
+
     const base = location.origin + location.pathname;
-    const link = `${base}?invite=${type}&token=${token}`;
-    const lv = document.getElementById('invite-link-val');
-    const lp = document.getElementById('invite-link-preview');
-    if(lv) lv.value = link;
-    if(lp) lp.style.display = 'block';
-    // Log + notify
     const labelMap = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
-    const label = labelMap[type] || type;
-    ActivityLog.add('Invite', `Invite link sent to ${email}`, `Role: ${label}`, 'Super Admin');
-    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:'Invite sent', text:`${label} invite sent to ${email}.`, cta:null, action:null});
-    // Simulate email send confirmation
+    const label = labelMap[type];
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+    emails.forEach(email => {
+      const token = Math.random().toString(36).slice(2,10).toUpperCase();
+      const link = `${base}?invite=${type}&token=${token}`;
+      InviteActivityLog.add({ email, type, label, token, link, sentBy:'Super Admin', date:dateStr, time:timeStr, status:'pending' });
+    });
+
+    ActivityLog.add('Invite', `${emails.length} invite link${emails.length>1?'s':''} sent`, `Role: ${label}`, 'Super Admin');
+    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:`${emails.length} invite${emails.length>1?'s':''} sent`,
+      text:`${label} invite${emails.length>1?'s':''} sent to ${emails.length} recipient${emails.length>1?'s':''}.`,
+      cta:'View log', action:()=>App.setPage('admin-invite-log')});
+
     const foot = document.getElementById('dm-foot');
-    if(foot) foot.innerHTML = `<div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; Invite email sent to ${email}</div><button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
+    if(foot) foot.innerHTML = `
+      <div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; ${emails.length} invite email${emails.length>1?'s':''} sent successfully</div>
+      <button class="btn btn-ghost btn-sm" onclick="Modal.close();App.setPage('admin-invite-log')">View invite log</button>
+      <button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
   },
 
   copyLink(){
@@ -6665,6 +6886,7 @@ Sites.renderAll();
 FacilityJobs.renderTable();
 JobCredentials.renderBox();
 AdminQueue.renderTable();
+InviteActivityLog.render();
 AdminDisputes.renderTable();
 Professionals.renderRoster();Professionals.renderMonitoring();AdminFacilities.render();ActivityLog.render();
 ActivityLog._renderDashboard();
