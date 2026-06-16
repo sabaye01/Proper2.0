@@ -837,8 +837,6 @@
   .lg-signin{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s}
   .lg-signin:hover{background:#1d4ed8}
   .lg-note{text-align:center;font-size:11.5px;color:var(--g400);margin-top:16px;line-height:1.55}
-  .lg-error{background:#FEE2E2;border:1px solid #FECACA;color:#B91C1C;border-radius:8px;padding:10px 13px;font-size:12.5px;font-weight:500;margin-bottom:10px;line-height:1.5}
-  .lg-field input.lg-input-err{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,0.12)}
   .rb-logout{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);color:white;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;white-space:nowrap}
   .rb-logout:hover{background:rgba(255,255,255,0.26)}
   .rb-userchip{color:rgba(255,255,255,0.88);font-size:12px;font-weight:600;white-space:nowrap}
@@ -986,11 +984,28 @@
       <button class="lg-tab" data-lgrole="facility" onclick="App.lgSelect('facility')">Facility</button>
       <button class="lg-tab" data-lgrole="admin" onclick="App.lgSelect('admin')">Admin</button>
     </div>
-    <div class="lg-field"><label>Email</label><input type="email" id="lg-email" placeholder="Enter your email"/></div>
-    <div class="lg-field"><label>Password</label><input type="password" id="lg-pass" placeholder="Enter your password"/></div>
-    <div class="lg-error" id="lg-error" style="display:none"></div>
-    <button class="lg-signin" onclick="App.login()">Sign in as <span id="lg-role-label">Paraprofessional</span></button>
-    <div class="lg-note">Sign in with your role-specific credentials. Select the correct portal tab before signing in.</div>
+
+    <div class="lg-alert" id="lg-alert" style="display:none"></div>
+
+    <!-- Name field (sign up only) -->
+    <div class="lg-field" id="lg-name-field" style="display:none"><label>Full name</label><input type="text" id="lg-name" autocomplete="name"/></div>
+
+    <div class="lg-field"><label>Email</label><input type="email" id="lg-email" autocomplete="email" placeholder="you@example.com"/></div>
+
+    <div class="lg-field" id="lg-pass-field"><label>Password</label><input type="password" id="lg-pass" autocomplete="current-password" placeholder="••••••••"/></div>
+
+    <!-- New password fields (reset only) -->
+    <div class="lg-field" id="lg-newpass-field" style="display:none"><label>New password</label><input type="password" id="lg-newpass" autocomplete="new-password" placeholder="At least 8 characters"/></div>
+
+    <button class="lg-signin" id="lg-submit" onclick="App.lgSubmit()">Sign in</button>
+
+    <div class="lg-links" id="lg-links" style="margin-top:12px;display:flex;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:8px">
+      <a href="#" id="lg-link-forgot" onclick="App.lgMode('forgot');return false" style="color:#2563eb;text-decoration:none">Forgot password?</a>
+      <a href="#" id="lg-link-toggle" onclick="App.lgMode('signup');return false" style="color:#2563eb;text-decoration:none">Create an account</a>
+    </div>
+
+    <div class="lg-note" id="lg-note">Sign in with your email and password. Paraprofessional and Facility accounts see only their own view; Admin accounts can switch between all three.</div>
+    <div class="lg-note" style="margin-top:6px;opacity:.8">Demo logins (password <strong>demo1234</strong>): para@properstaffing.com · facility@properstaffing.com · admin@properstaffing.com</div>
   </div>
 </div>
 
@@ -2424,59 +2439,150 @@ const App = {
     this.lgRole = role;
     document.querySelectorAll('.lg-tab').forEach(t => t.classList.toggle('active', t.dataset.lgrole === role));
   },
-  // Demo credentials — each role has its own email+password
-  _creds:{
-    para:    {email:'para@properstaffing.com',    pass:'para1234'},
-    facility:{email:'facility@properstaffing.com', pass:'facility1234'},
-    admin:   {email:'admin@properstaffing.com',   pass:'admin1234'}
-  },
-  _lgError(msg){
-    const el = document.getElementById('lg-error');
+
+  _lgAlert(msg, kind){
+    const el = document.getElementById('lg-alert');
     if(!el) return;
-    el.innerHTML = '&#9888; ' + msg;
-    el.style.display = 'flex';
-    ['lg-email','lg-pass'].forEach(id => {
-      const inp = document.getElementById(id);
-      if(inp) inp.classList.add('lg-input-err');
-    });
+    if(!msg){ el.style.display='none'; el.textContent=''; return; }
+    el.style.display='block';
+    el.textContent = msg;
+    el.style.cssText = 'display:block;margin:0 0 12px;padding:10px 12px;border-radius:8px;font-size:13px;'+
+      (kind==='success'
+        ? 'background:#dcfce7;color:#166534;border:1px solid #bbf7d0;'
+        : 'background:#fee2e2;color:#991b1b;border:1px solid #fecaca;');
   },
-  _lgClearError(){
-    const el = document.getElementById('lg-error');
-    if(el) el.style.display = 'none';
-    ['lg-email','lg-pass'].forEach(id => {
-      const inp = document.getElementById(id);
-      if(inp) inp.classList.remove('lg-input-err');
-    });
+
+  // Switch gate between: signin | signup | forgot | reset
+  lgMode(mode){
+    this.lgCurrentMode = mode;
+    this._lgAlert('');
+    const sub = document.getElementById('lg-sub');
+    const tabs = document.getElementById('lg-tabs');
+    const nameField = document.getElementById('lg-name-field');
+    const passField = document.getElementById('lg-pass-field');
+    const newpassField = document.getElementById('lg-newpass-field');
+    const submit = document.getElementById('lg-submit');
+    const links = document.getElementById('lg-links');
+    const linkToggle = document.getElementById('lg-link-toggle');
+    const linkForgot = document.getElementById('lg-link-forgot');
+    const note = document.getElementById('lg-note');
+
+    // defaults
+    tabs.style.display = 'flex';
+    nameField.style.display = 'none';
+    passField.style.display = 'block';
+    newpassField.style.display = 'none';
+    links.style.display = 'flex';
+    linkForgot.style.display = 'inline';
+
+    if(mode === 'signin'){
+      sub.textContent = 'Sign in to your account';
+      submit.textContent = 'Sign in';
+      linkToggle.textContent = 'Create an account';
+      linkToggle.setAttribute('onclick', "App.lgMode('signup');return false");
+      note.textContent = 'Sign in with your email and password. Paraprofessional and Facility accounts see only their own view; Admin accounts can switch between all three.';
+    } else if(mode === 'signup'){
+      sub.textContent = 'Create your account';
+      nameField.style.display = 'block';
+      submit.textContent = 'Create account';
+      linkToggle.textContent = 'Have an account? Sign in';
+      linkToggle.setAttribute('onclick', "App.lgMode('signin');return false");
+      // Admin accounts are provisioned manually, not self-signup
+      if(this.lgRole === 'admin') this.lgSelect('para');
+      note.textContent = 'Choose whether you are a Paraprofessional or Facility, then create your account. Passwords must be at least 8 characters.';
+    } else if(mode === 'forgot'){
+      sub.textContent = 'Reset your password';
+      tabs.style.display = 'none';
+      passField.style.display = 'none';
+      submit.textContent = 'Send reset link';
+      linkForgot.style.display = 'none';
+      linkToggle.textContent = 'Back to sign in';
+      linkToggle.setAttribute('onclick', "App.lgMode('signin');return false");
+      note.textContent = 'Enter your email and we will send a link to reset your password.';
+    } else if(mode === 'reset'){
+      sub.textContent = 'Choose a new password';
+      tabs.style.display = 'none';
+      passField.style.display = 'none';
+      newpassField.style.display = 'block';
+      submit.textContent = 'Update password';
+      links.style.display = 'none';
+      note.textContent = 'Enter a new password for your account.';
+    }
   },
-  login(){
-    const role = this.lgRole;
-    const email = (document.getElementById('lg-email')?.value || '').trim().toLowerCase();
-    const pass  = (document.getElementById('lg-pass')?.value  || '').trim();
-    this._lgClearError();
 
-    // Find which role these credentials belong to
-    const matchedRole = Object.keys(this._creds).find(r =>
-      this._creds[r].email === email && this._creds[r].pass === pass
-    );
+  lgSubmit(){
+    const mode = this.lgCurrentMode;
+    if(mode === 'signin') return this.doLogin();
+    if(mode === 'signup') return this.doSignup();
+    if(mode === 'forgot') return this.doForgot();
+    if(mode === 'reset') return this.doReset();
+  },
 
-    if(!matchedRole) {
-      this._lgError('Incorrect email or password. Please try again.');
-      return;
-    }
-    if(matchedRole !== role) {
-      const labels = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
-      this._lgError(`These credentials belong to the ${labels[matchedRole]} portal. Please select the correct tab and try again.`);
-      return;
-    }
+  async _post(url, payload){
+    try{
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      return await res.json();
+    }catch(e){ return { ok:false, error:'Network error. Please try again.' }; }
+  },
 
-    this.loggedInRole = role;
+  async doLogin(){
+    const email = (document.getElementById('lg-email').value || '').trim();
+    const password = document.getElementById('lg-pass').value || '';
+    if(!email || !password){ this._lgAlert('Enter your email and password.'); return; }
+    const btn = document.getElementById('lg-submit'); btn.disabled = true; btn.textContent = 'Signing in…';
+    const r = await this._post('/api/auth/login', { email, password });
+    btn.disabled = false; btn.textContent = 'Sign in';
+    if(!r.ok){ this._lgAlert(r.error || 'Could not sign in.'); return; }
+    this._enterApp(r.user);
+  },
+
+  async doSignup(){
+    const name = (document.getElementById('lg-name').value || '').trim();
+    const email = (document.getElementById('lg-email').value || '').trim();
+    const password = document.getElementById('lg-pass').value || '';
+    const role = this.lgRole === 'admin' ? 'para' : this.lgRole;
+    if(!email || !password){ this._lgAlert('Enter your email and a password.'); return; }
+    if(password.length < 8){ this._lgAlert('Password must be at least 8 characters.'); return; }
+    const btn = document.getElementById('lg-submit'); btn.disabled = true; btn.textContent = 'Creating…';
+    const r = await this._post('/api/auth/signup', { name, email, password, role });
+    btn.disabled = false; btn.textContent = 'Create account';
+    if(!r.ok){ this._lgAlert(r.error || 'Could not create account.'); return; }
+    this._enterApp(r.user);
+  },
+
+  async doForgot(){
+    const email = (document.getElementById('lg-email').value || '').trim();
+    if(!email){ this._lgAlert('Enter your email address.'); return; }
+    const btn = document.getElementById('lg-submit'); btn.disabled = true; btn.textContent = 'Sending…';
+    const r = await this._post('/api/auth/request-reset', { email });
+    btn.disabled = false; btn.textContent = 'Send reset link';
+    this._lgAlert(r.message || 'If an account exists, a reset link has been sent.', 'success');
+  },
+
+  async doReset(){
+    const password = document.getElementById('lg-newpass').value || '';
+    if(password.length < 8){ this._lgAlert('Password must be at least 8 characters.'); return; }
+    const btn = document.getElementById('lg-submit'); btn.disabled = true; btn.textContent = 'Updating…';
+    const r = await this._post('/api/auth/reset-password', { token: this._resetToken, password });
+    btn.disabled = false; btn.textContent = 'Update password';
+    if(!r.ok){ this._lgAlert(r.error || 'Could not reset password.'); return; }
+    // Clean the URL and return to sign in
+    try{ history.replaceState({}, '', location.pathname); }catch(e){}
+    this.lgMode('signin');
+    this._lgAlert('Password updated. You can now sign in.', 'success');
+  },
+
+  _enterApp(user){
+    this.currentUser = user;
+    this.loggedInRole = user.role;
+    this._lgAlert('');
     document.getElementById('login-gate').classList.add('hidden');
     const btns = document.getElementById('role-btns');
     if(btns) btns.style.display = 'none';
-    const roleLabels = {para:'Paraprofessional', facility:'Facility', admin:'Administrator'};
+    const labels = {para:'Paraprofessional', facility:'Facility', admin:'Administrator'};
     const chip = document.getElementById('rb-userchip');
-    if(chip) chip.textContent = 'Signed in · ' + roleLabels[role];
-    this._applyRole(role);
+    if(chip) chip.textContent = (user.name ? user.name + ' · ' : 'Signed in · ') + labels[user.role];
+    this._applyRole(user.role);
     if(typeof Badges !== 'undefined') Badges.syncAll();
     setTimeout(() => Agreements.maybeShow(user.role), 350);
   },
