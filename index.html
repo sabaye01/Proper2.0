@@ -2440,21 +2440,17 @@ const App = {
     const lbl = document.getElementById('lg-role-label');
     if(lbl) lbl.textContent = labels[role];
   },
-  // Demo credentials — each role has its own email+password
-  _creds:{
-    para:    {email:'para@properstaffing.com',    pass:'para1234'},
-    facility:{email:'facility@properstaffing.com', pass:'facility1234'},
-    admin:   {email:'admin@properstaffing.com',   pass:'admin1234'}
-  },
-  _lgError(msg){
+  _lgError(msg, highlightFields = true){
     const el = document.getElementById('lg-error');
     if(!el) return;
-    el.innerHTML = '&#9888; ' + msg;
-    el.style.display = 'flex';
-    ['lg-email','lg-pass'].forEach(id => {
-      const inp = document.getElementById(id);
-      if(inp) inp.classList.add('lg-input-err');
-    });
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+    if(highlightFields){
+      ['lg-email','lg-pass'].forEach(id => {
+        const inp = document.getElementById(id);
+        if(inp) inp.classList.add('lg-input-err');
+      });
+    }
   },
   _lgClearError(){
     const el = document.getElementById('lg-error');
@@ -2464,37 +2460,60 @@ const App = {
       if(inp) inp.classList.remove('lg-input-err');
     });
   },
-  login(){
-    const role = this.lgRole;
+  async login(){
+    const role  = this.lgRole;
     const email = (document.getElementById('lg-email')?.value || '').trim().toLowerCase();
     const pass  = (document.getElementById('lg-pass')?.value  || '').trim();
     this._lgClearError();
 
-    // Find which role these credentials belong to
-    const matchedRole = Object.keys(this._creds).find(r =>
-      this._creds[r].email === email && this._creds[r].pass === pass
-    );
-
-    if(!matchedRole) {
-      this._lgError('Incorrect email or password. Please try again.');
-      return;
-    }
-    if(matchedRole !== role) {
-      const labels = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
-      this._lgError(`These credentials belong to the ${labels[matchedRole]} portal. Please select the correct tab and try again.`);
+    if(!email || !pass){
+      this._lgError('Please enter your email and password.');
       return;
     }
 
-    this.loggedInRole = role;
-    document.getElementById('login-gate').classList.add('hidden');
-    const btns = document.getElementById('role-btns');
-    if(btns) btns.style.display = 'none';
-    const roleLabels = {para:'Paraprofessional', facility:'Facility', admin:'Administrator'};
-    const chip = document.getElementById('rb-userchip');
-    if(chip) chip.textContent = 'Signed in · ' + roleLabels[role];
-    this._applyRole(role);
-    if(typeof Badges !== 'undefined') Badges.syncAll();
-    setTimeout(() => Agreements.maybeShow(role), 350);
+    const btn = document.getElementById('lg-signin-btn');
+    if(btn){ btn.disabled = true; btn.style.opacity = '0.7'; }
+
+    try {
+      const res  = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({email, password: pass})
+      });
+      const data = await res.json();
+
+      if(!data.ok){
+        this._lgError(data.error || 'Incorrect email or password. Please try again.');
+        return;
+      }
+
+      const userRole = data.user?.role;
+      if(userRole !== role){
+        const labels = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
+        const portalName = labels[userRole] || userRole;
+        this._lgError(`These credentials belong to the ${portalName} portal. Please select the correct tab and try again.`, false);
+        return;
+      }
+
+      // Success — enter the app
+      this.loggedInRole = role;
+      this._currentUser = data.user;
+      document.getElementById('login-gate').classList.add('hidden');
+      const btns = document.getElementById('role-btns');
+      if(btns) btns.style.display = 'none';
+      const roleLabels = {para:'Paraprofessional', facility:'Facility', admin:'Administrator'};
+      const chip = document.getElementById('rb-userchip');
+      const displayName = data.user?.name || roleLabels[role];
+      if(chip) chip.textContent = 'Signed in · ' + displayName;
+      this._applyRole(role);
+      if(typeof Badges !== 'undefined') Badges.syncAll();
+      setTimeout(() => Agreements.maybeShow(role), 350);
+
+    } catch(e){
+      this._lgError('Network error. Please check your connection and try again.');
+    } finally {
+      if(btn){ btn.disabled = false; btn.style.opacity = ''; }
+    }
   },
   showForgotPassword(){
     document.getElementById('lg-forgot-view').style.display = 'block';
