@@ -45,12 +45,14 @@
   .status-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80;box-shadow:0 0 6px #4ADE80}
 
   /* LAYOUT */
-  .app{padding-top:56px;min-height:100vh}
-  .layout{display:flex;min-height:calc(100vh - 56px)}
+  .app{padding-top:56px;height:100vh;overflow:hidden}
+  .layout{display:flex;height:calc(100vh - 56px);overflow:hidden}
 
   /* SIDEBAR */
-  .sidebar{width:240px;background:var(--navy);color:white;flex-shrink:0;display:none;flex-direction:column}
+  .sidebar{width:240px;background:var(--navy);color:white;flex-shrink:0;display:none;flex-direction:column;height:100%;overflow-y:auto;overflow-x:hidden}
   .sidebar.active{display:flex}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px}
   .sb-brand-area{padding:20px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.08)}
   .sb-brand-name{font-size:15px;font-weight:600;color:white;letter-spacing:-0.3px}
   .sb-brand-name span{color:var(--blue-light)}
@@ -71,7 +73,7 @@
   .u-role{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px}
 
   /* MAIN */
-  .main{flex:1;padding:26px 32px 60px;min-width:0;overflow-x:hidden}
+  .main{flex:1;padding:26px 32px 60px;min-width:0;overflow-x:hidden;overflow-y:auto;height:100%}
   .page{display:none;animation:fade 0.2s ease}
   .page.active{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -334,12 +336,26 @@
     .main{padding:22px 20px 50px}
     .doc-review{grid-template-columns:1fr}
   }
-  @media (max-width: 680px){
+  /* Portrait mobile — hide sidebar, show bottom nav */
+  @media (max-width: 680px) and (orientation: portrait){
     .sidebar{display:none !important}
     .main{padding:18px 16px 90px}
     .role-btns .role-btn{padding:5px 10px;font-size:11px}
     .brand-text{font-size:14px}
     .mobile-nav{display:flex !important}
+  }
+  /* Landscape mobile — collapse sidebar to icon rail */
+  @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px){
+    .sidebar{width:58px;overflow:hidden}
+    .sidebar .sb-brand-area,.sidebar .sb-label,.sidebar .u-name,.sidebar .u-role,.sidebar .sb-brand-name,.sidebar .sb-brand-tag{display:none}
+    .sidebar .nav-item{justify-content:center;padding:10px 0;gap:0}
+    .sidebar .nav-item span:not(.nav-icon):not(.nav-badge){display:none}
+    .sidebar .nav-icon{width:100%;text-align:center;font-size:16px}
+    .sidebar .sb-footer{padding:10px 0;display:flex;justify-content:center}
+    .sidebar .avatar{width:30px;height:30px;font-size:11px}
+    .sidebar .user-chip > div:last-child{display:none}
+    .main{padding:14px 12px 20px}
+    .mobile-nav{display:none !important}
   }
 
   /* ===== V2: APPLICATION STEPPER ===== */
