@@ -837,6 +837,8 @@
   .lg-signin{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s}
   .lg-signin:hover{background:#1d4ed8}
   .lg-note{text-align:center;font-size:11.5px;color:var(--g400);margin-top:16px;line-height:1.55}
+  .lg-error{background:#FEE2E2;border:1px solid #FECACA;color:#B91C1C;border-radius:8px;padding:10px 13px;font-size:12.5px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .lg-field input.lg-input-err{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,0.12)}
   .rb-logout{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);color:white;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;white-space:nowrap}
   .rb-logout:hover{background:rgba(255,255,255,0.26)}
   .rb-userchip{color:rgba(255,255,255,0.88);font-size:12px;font-weight:600;white-space:nowrap}
@@ -982,10 +984,11 @@
       <button class="lg-tab" data-lgrole="facility" onclick="App.lgSelect('facility')">Facility</button>
       <button class="lg-tab" data-lgrole="admin" onclick="App.lgSelect('admin')">Admin</button>
     </div>
-    <div class="lg-field"><label>Email</label><input type="email" id="lg-email" value="demo@properstaffing.com"/></div>
-    <div class="lg-field"><label>Password</label><input type="password" id="lg-pass" value="demo1234"/></div>
+    <div class="lg-field"><label>Email</label><input type="email" id="lg-email" placeholder="Enter your email"/></div>
+    <div class="lg-field"><label>Password</label><input type="password" id="lg-pass" placeholder="Enter your password"/></div>
+    <div class="lg-error" id="lg-error" style="display:none"></div>
     <button class="lg-signin" onclick="App.login()">Sign in as <span id="lg-role-label">Paraprofessional</span></button>
-    <div class="lg-note">Demo environment — choose a role and sign in (credentials are pre-filled). Paraprofessional and Facility sign-ins see only their own view; the Admin sign-in can switch between all three.</div>
+    <div class="lg-note">Sign in with your role-specific credentials. Select the correct portal tab before signing in.</div>
   </div>
 </div>
 
@@ -2418,18 +2421,58 @@ const App = {
     const lbl = document.getElementById('lg-role-label');
     if(lbl) lbl.textContent = labels[role];
   },
+  // Demo credentials — each role has its own email+password
+  _creds:{
+    para:    {email:'para@properstaffing.com',    pass:'para1234'},
+    facility:{email:'facility@properstaffing.com', pass:'facility1234'},
+    admin:   {email:'admin@properstaffing.com',   pass:'admin1234'}
+  },
+  _lgError(msg){
+    const el = document.getElementById('lg-error');
+    if(!el) return;
+    el.innerHTML = '&#9888; ' + msg;
+    el.style.display = 'flex';
+    ['lg-email','lg-pass'].forEach(id => {
+      const inp = document.getElementById(id);
+      if(inp) inp.classList.add('lg-input-err');
+    });
+  },
+  _lgClearError(){
+    const el = document.getElementById('lg-error');
+    if(el) el.style.display = 'none';
+    ['lg-email','lg-pass'].forEach(id => {
+      const inp = document.getElementById(id);
+      if(inp) inp.classList.remove('lg-input-err');
+    });
+  },
   login(){
     const role = this.lgRole;
+    const email = (document.getElementById('lg-email')?.value || '').trim().toLowerCase();
+    const pass  = (document.getElementById('lg-pass')?.value  || '').trim();
+    this._lgClearError();
+
+    // Find which role these credentials belong to
+    const matchedRole = Object.keys(this._creds).find(r =>
+      this._creds[r].email === email && this._creds[r].pass === pass
+    );
+
+    if(!matchedRole) {
+      this._lgError('Incorrect email or password. Please try again.');
+      return;
+    }
+    if(matchedRole !== role) {
+      const labels = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
+      this._lgError(`These credentials belong to the ${labels[matchedRole]} portal. Please select the correct tab and try again.`);
+      return;
+    }
+
     this.loggedInRole = role;
     document.getElementById('login-gate').classList.add('hidden');
-    // Role is fixed at login (no cross-view toggle); chip reflects it
     const btns = document.getElementById('role-btns');
     if(btns) btns.style.display = 'none';
-    // User chip in the top bar
-    const labels = {para:'Paraprofessional', facility:'Facility', admin:'Administrator'};
+    const roleLabels = {para:'Paraprofessional', facility:'Facility', admin:'Administrator'};
     const chip = document.getElementById('rb-userchip');
-    if(chip) chip.textContent = 'Signed in · ' + labels[role];
-    // Apply the view, then surface the first-login agreement
+    if(chip) chip.textContent = 'Signed in · ' + roleLabels[role];
     this._applyRole(role);
     if(typeof Badges !== 'undefined') Badges.syncAll();
     setTimeout(() => Agreements.maybeShow(role), 350);
