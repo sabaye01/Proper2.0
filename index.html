@@ -2423,7 +2423,8 @@ const App = {
     // Role separation: only an Admin login may switch between views.
     // Paraprofessional and Facility logins are locked to their own view.
     if(this.loggedInRole && this.loggedInRole !== 'admin' && role !== this.loggedInRole) return;
-    if(!Agreements.seen[role]){
+    const _email = this._currentUser?.email || '';
+    if(!Agreements.hasSeen(_email, role)){
       Agreements.show(role, false);
       return;
     }
@@ -3090,9 +3091,21 @@ const Payments = {
   reviewed by licensed California employment counsel before any production use.
 */
 const Agreements = {
-  seen: {},        // in-memory per session (no localStorage in artifacts)
+  seen: {},
   current: null,
   preview: false,
+
+  _storageKey(email, role){ return `agr_accepted:${(email||'').toLowerCase()}:${role}`; },
+
+  hasSeen(email, role){
+    if(this.seen[role]) return true;
+    try { return !!localStorage.getItem(this._storageKey(email, role)); } catch(e){ return false; }
+  },
+
+  markSeen(email, role){
+    this.seen[role] = true;
+    try { localStorage.setItem(this._storageKey(email, role), '1'); } catch(e){}
+  },
 
   data: {
     para: {
@@ -3197,13 +3210,13 @@ const Agreements = {
 
   accept(){
     const role = this.current;
-    this.seen[role] = true;
+    const email = App._currentUser?.email || '';
+    this.markSeen(email, role);
     document.getElementById('agr-overlay').classList.remove('show');
     if(this.preview){
       setTimeout(() => alert('Agreement accepted (demo). In production this stores an e-signature, timestamp, IP, and the agreement version to the audit log.'), 150);
     } else {
       App._applyRole(role);
-      // First-login spotlight tour for worker & facility (admin is excluded)
       if(role === 'para' || role === 'facility'){
         setTimeout(() => Tour.start(role), 450);
       }
@@ -3218,7 +3231,8 @@ const Agreements = {
   },
 
   maybeShow(role){
-    if(this.seen[role]) return false;
+    const email = App._currentUser?.email || '';
+    if(this.hasSeen(email, role)) return false;
     this.show(role, false);
     return true;
   }
