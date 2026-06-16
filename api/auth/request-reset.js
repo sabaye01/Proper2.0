@@ -1,6 +1,7 @@
 import crypto from "crypto"
 import { sql, readJsonBody } from "../_db.js"
 import { sendMail } from "../_email.js"
+import { rateLimit, clientIp, tooMany } from "../_ratelimit.js"
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -14,6 +15,13 @@ export default async function handler(req, res) {
     return
   }
   const normalizedEmail = String(email).trim().toLowerCase()
+
+  // Rate limit reset requests per IP and per email to prevent inbox spam.
+  const ip = clientIp(req)
+  const ipLimit = await rateLimit(`reset:ip:${ip}`, { limit: 5, windowSec: 900 })
+  if (!ipLimit.allowed) return tooMany(res, ipLimit.retryAfter)
+  const emailLimit = await rateLimit(`reset:email:${normalizedEmail}`, { limit: 3, windowSec: 900 })
+  if (!emailLimit.allowed) return tooMany(res, emailLimit.retryAfter)
 
   // Always respond success to avoid leaking which emails are registered.
   const genericResponse = { ok: true, message: "If an account exists, a reset link has been sent." }

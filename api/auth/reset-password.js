@@ -1,12 +1,18 @@
 import crypto from "crypto"
 import bcrypt from "bcryptjs"
 import { sql, readJsonBody } from "../_db.js"
+import { rateLimit, clientIp, tooMany } from "../_ratelimit.js"
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ ok: false, error: "Method not allowed" })
     return
   }
+
+  // Rate limit per IP to prevent brute-forcing reset tokens.
+  const ip = clientIp(req)
+  const ipLimit = await rateLimit(`resetpw:ip:${ip}`, { limit: 10, windowSec: 900 })
+  if (!ipLimit.allowed) return tooMany(res, ipLimit.retryAfter)
 
   const { token, password } = await readJsonBody(req)
   if (!token || !password) {

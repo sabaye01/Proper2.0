@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs"
 import { sql, readJsonBody } from "../_db.js"
 import { signSession, setSessionCookie } from "../_auth.js"
+import { rateLimit, clientIp, tooMany } from "../_ratelimit.js"
 
 const ROLES = ["para", "facility", "admin"]
 
@@ -9,6 +10,11 @@ export default async function handler(req, res) {
     res.status(405).json({ ok: false, error: "Method not allowed" })
     return
   }
+
+  // Rate limit signups per IP to prevent mass/bot account creation.
+  const ip = clientIp(req)
+  const ipLimit = await rateLimit(`signup:ip:${ip}`, { limit: 5, windowSec: 3600 })
+  if (!ipLimit.allowed) return tooMany(res, ipLimit.retryAfter)
 
   const { email, password, name, role } = await readJsonBody(req)
 

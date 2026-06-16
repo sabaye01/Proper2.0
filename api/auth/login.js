@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs"
 import { sql, readJsonBody } from "../_db.js"
 import { signSession, setSessionCookie } from "../_auth.js"
+import { rateLimit, clientIp, tooMany } from "../_ratelimit.js"
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -14,6 +15,13 @@ export default async function handler(req, res) {
     return
   }
   const normalizedEmail = String(email).trim().toLowerCase()
+
+  // Rate limit: per-IP (burst protection) and per-email (credential stuffing).
+  const ip = clientIp(req)
+  const ipLimit = await rateLimit(`login:ip:${ip}`, { limit: 10, windowSec: 300 })
+  if (!ipLimit.allowed) return tooMany(res, ipLimit.retryAfter)
+  const emailLimit = await rateLimit(`login:email:${normalizedEmail}`, { limit: 5, windowSec: 900 })
+  if (!emailLimit.allowed) return tooMany(res, emailLimit.retryAfter)
 
   try {
     const rows = await sql`
