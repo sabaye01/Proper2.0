@@ -1,0 +1,44 @@
+# ---- OS junk ----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---- Editor / IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- Node / tooling (only if you ever add a build step) ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ---- Vercel ----
+.vercel
+
+# ---- Env / secrets (never commit these) ----
+.env
+.env.*
+*.local
+
+# ---- Logs / temp ----
+*.log
+tmp/
+temp/
+
+# ---- Build artifacts (this project ships index.html as-is; ignore generated copies) ----
+dist/
+build/
+*.min.html
