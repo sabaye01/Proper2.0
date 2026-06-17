@@ -2453,14 +2453,8 @@ const App = {
       });
     }
   },
-  _lgClearError(){
-    const el = document.getElementById('lg-error');
-    if(el) el.style.display = 'none';
-    ['lg-email','lg-pass'].forEach(id => {
-      const inp = document.getElementById(id);
-      if(inp) inp.classList.remove('lg-input-err');
-    });
-  },
+
+  // Switch gate between: signin | signup | forgot | reset
   async login(){
     const role  = this.lgRole;
     const email = (document.getElementById('lg-email')?.value || '').trim().toLowerCase();
@@ -7042,7 +7036,7 @@ const InviteLink = {
     if(lbl) lbl.textContent = `${document.querySelectorAll('[id^="il-email-"]').length} recipient row${document.querySelectorAll('[id^="il-email-"]').length===1?'':'s'} · ${emails.length} email${emails.length===1?'':'s'} entered`;
   },
 
-  generate(){
+  async generate(){
     const type = document.querySelector('input[name="invite-type"]:checked')?.value || 'para';
     const inputs = [...document.querySelectorAll('[id^="il-email-"]')];
     const emails = inputs.map(i=>i.value.trim()).filter(v=>v && v.includes('@'));
@@ -7057,22 +7051,43 @@ const InviteLink = {
     const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
-    emails.forEach(email => {
+    // Indicate sending in the modal footer
+    const foot = document.getElementById('dm-foot');
+    if(foot) foot.innerHTML = `<div style="font-size:12.5px;color:var(--g500);font-weight:600">Sending ${emails.length} invite${emails.length>1?'s':''}…</div>`;
+
+    // Build the invite records and fire off real emails via the backend
+    const results = await Promise.all(emails.map(async email => {
       const token = Math.random().toString(36).slice(2,10).toUpperCase();
       const link = `${base}?invite=${type}&token=${token}`;
       InviteActivityLog.add({ email, type, label, token, link, sentBy:'Super Admin', date:dateStr, time:timeStr, status:'pending' });
-    });
+      const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
+        <h2 style="color:#0f2a4a">You're invited to Proper Staffing</h2>
+        <p>You've been invited to join Proper Staffing as a <strong>${label}</strong>.</p>
+        <p>Click the button below to create your account and get started. Your account is reviewed before activation — you'll set your own password, so no one ever handles your credentials.</p>
+        <p style="margin:24px 0"><a href="${link}" style="background:#1d4ed8;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block">Accept invite &amp; create account</a></p>
+        <p style="font-size:12px;color:#6b7280">Or paste this link into your browser:<br>${link}</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">
+        <p style="font-size:12px;color:#9ca3af">If you weren't expecting this invite, you can safely ignore this email.</p>
+      </div>`;
+      const r = await ProperAPI.sendEmail({ to: email, subject: `You're invited to Proper Staffing (${label})`, html, category: 'invite' });
+      return { email, ok: !!(r && r.ok), error: r && r.error };
+    }));
 
-    ActivityLog.add('Invite', `${emails.length} invite link${emails.length>1?'s':''} sent`, `Role: ${label}`, 'Super Admin');
-    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:`${emails.length} invite${emails.length>1?'s':''} sent`,
-      text:`${label} invite${emails.length>1?'s':''} sent to ${emails.length} recipient${emails.length>1?'s':''}.`,
+    const sent = results.filter(r=>r.ok);
+    const failed = results.filter(r=>!r.ok);
+
+    ActivityLog.add('Invite', `${sent.length} invite link${sent.length!==1?'s':''} emailed`, `Role: ${label}`, 'Super Admin');
+    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:`${sent.length} invite${sent.length!==1?'s':''} sent`,
+      text:`${label} invite${sent.length!==1?'s':''} emailed to ${sent.length} recipient${sent.length!==1?'s':''}.`,
       cta:'View log', action:()=>App.setPage('admin-invite-log')});
 
-    const foot = document.getElementById('dm-foot');
-    if(foot) foot.innerHTML = `
-      <div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; ${emails.length} invite email${emails.length>1?'s':''} sent successfully</div>
-      <button class="btn btn-ghost btn-sm" onclick="Modal.close();App.setPage('admin-invite-log')">View invite log</button>
-      <button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
+    if(foot){
+      const okMsg = sent.length ? `<div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; ${sent.length} invite email${sent.length!==1?'s':''} sent</div>` : '';
+      const failMsg = failed.length ? `<div style="font-size:12px;color:var(--red);font-weight:600">${failed.length} could not be delivered${failed[0].error?(' — '+failed[0].error):''} (still logged)</div>` : '';
+      foot.innerHTML = `${okMsg}${failMsg}
+        <button class="btn btn-ghost btn-sm" onclick="Modal.close();App.setPage('admin-invite-log')">View invite log</button>
+        <button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
+    }
   },
 
   copyLink(){
