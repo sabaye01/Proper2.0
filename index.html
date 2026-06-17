@@ -6925,6 +6925,29 @@ const AdminInvites = {
 Tooltip.init();
 
 /* ============================================================
+   PROPER API — thin client for backend endpoints (email, etc.)
+   ============================================================ */
+const ProperAPI = {
+  // Send an email through the backend (Resend). Returns {ok, id} or {ok:false, error}.
+  async sendEmail({ to, subject, html, text, category } = {}){
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ to, subject, html, text, category })
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || data.error){
+        return { ok:false, error: data.error || `Send failed (${res.status})` };
+      }
+      return { ok:true, id: data.id, logId: data.logId };
+    } catch(e){
+      return { ok:false, error: e.message || 'Network error' };
+    }
+  }
+};
+
+/* ============================================================
    INVITE LINK — admin sends role-specific signup links
    ============================================================ */
 const InviteLink = {
