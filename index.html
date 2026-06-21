@@ -2473,14 +2473,12 @@ const App = {
   },
   _lgClearError(){
     const el = document.getElementById('lg-error');
-    if(el){ el.style.display = 'none'; el.textContent = ''; }
+    if(el) el.style.display = 'none';
     ['lg-email','lg-pass'].forEach(id => {
       const inp = document.getElementById(id);
       if(inp) inp.classList.remove('lg-input-err');
     });
   },
-
-  // Switch gate between: signin | signup | forgot | reset
   async login(){
     const role  = this.lgRole;
     const email = (document.getElementById('lg-email')?.value || '').trim().toLowerCase();
@@ -3107,7 +3105,7 @@ const Payments = {
 /* ============ AGREEMENTS / ACKNOWLEDGMENTS ============ */
 /*
   Role-specific first-login agreements, grounded in current California law.
-  NOTE: Template language for demonstration only ��� NOT legal advice. Must be
+  NOTE: Template language for demonstration only — NOT legal advice. Must be
   reviewed by licensed California employment counsel before any production use.
 */
 const Agreements = {
@@ -6952,29 +6950,6 @@ const AdminInvites = {
 Tooltip.init();
 
 /* ============================================================
-   PROPER API — thin client for backend endpoints (email, etc.)
-   ============================================================ */
-const ProperAPI = {
-  // Send an email through the backend (Resend). Returns {ok, id} or {ok:false, error}.
-  async sendEmail({ to, subject, html, text, category } = {}){
-    try {
-      const res = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ to, subject, html, text, category })
-      });
-      const data = await res.json().catch(() => ({}));
-      if(!res.ok || data.error){
-        return { ok:false, error: data.error || `Send failed (${res.status})` };
-      }
-      return { ok:true, id: data.id, logId: data.logId };
-    } catch(e){
-      return { ok:false, error: e.message || 'Network error' };
-    }
-  }
-};
-
-/* ============================================================
    INVITE LINK — admin sends role-specific signup links
    ============================================================ */
 const InviteLink = {
@@ -7495,6 +7470,28 @@ const InviteLink = {
       };
       AdminQueue.items.unshift(entry);
       AdminQueue.renderTable();
+
+      // Also surface immediately in the appropriate admin list
+      if(isPara){
+        Professionals.list.unshift({
+          name, dob: '—', role: cred, status: 'pending', rating: 0,
+          email, phone,
+          schedule: 'Invited — pending verification',
+          hours: {period:0,month:0,ytd:0}, pay: {period:0,month:0,ytd:0},
+          jobs: [], creds: []
+        });
+        Professionals.renderRoster();
+      } else {
+        const facId = 'f' + (AdminFacilities._seq++);
+        AdminFacilities.list.unshift({
+          id: facId, name, contact: name, email, phone,
+          facilityPhone: phone, status: 'onboarding',
+          type: 'Pending setup', addr: city || '—',
+          onboarded: null, jobs: []
+        });
+        AdminFacilities.render();
+      }
+
       NotificationBell.push('admin', {ic:'blue', icon:'&#128203;', title:'New signup: '+name,
         text:`${isPara?'Paraprofessional':'Facility'} account created via invite link. Ready for review.`,
         cta:'Review', action:()=>{ App.setRole('admin'); AdminQueue.openReview(newId); }});
