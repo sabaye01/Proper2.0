@@ -2323,16 +2323,34 @@
 </div>
 
 <!-- ===================== INVITE SIGNUP PAGE ===================== -->
-<div class="page" id="invite-signup" style="display:none;max-width:520px;margin:60px auto;padding:0 16px">
-  <div style="text-align:center;margin-bottom:28px">
-    <div style="font-size:28px;margin-bottom:8px">&#128231;</div>
-    <div style="font-size:22px;font-weight:700;color:var(--navy)" id="invite-signup-title">You've been invited</div>
-    <div style="font-size:14px;color:var(--g500);margin-top:6px" id="invite-signup-sub">Create your account to get started</div>
-  </div>
-  <div style="background:white;border:1px solid var(--g200);border-radius:14px;padding:28px 28px 24px">
-    <div id="invite-signup-fields"></div>
-    <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="InviteLink.submitSignup()">Create account &amp; submit for review</button>
-    <div style="font-size:11.5px;color:var(--g400);text-align:center;margin-top:14px">Your account will be reviewed by a Proper Staffing admin before you can sign in.</div>
+<!-- INVITE SIGNUP — full-page create account flow -->
+<div id="invite-signup" style="display:none;min-height:100vh;background:linear-gradient(135deg,#0B1E3D 0%,#13294f 55%,#1a3866 100%);display:none;align-items:flex-start;justify-content:center;padding:40px 16px 60px;overflow-y:auto">
+  <div style="width:100%;max-width:500px">
+    <!-- Brand header -->
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="display:inline-flex;align-items:center;gap:12px;margin-bottom:18px">
+        <div style="width:40px;height:40px;background:white;border-radius:10px;display:flex;align-items:center;justify-content:center"><span class="ps-logo on-light" style="font-size:18px;font-weight:800;color:var(--navy)"></span></div>
+        <div style="text-align:left"><div style="font-size:17px;font-weight:700;color:white;letter-spacing:-0.3px">Proper<span style="color:#60A5FA">Staffing</span></div><div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:0.4px">Precision Staffing, Delivered</div></div>
+      </div>
+      <div id="isu-role-badge" style="display:inline-block;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);font-size:11.5px;font-weight:600;padding:4px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);margin-bottom:14px"></div>
+      <div id="isu-title" style="font-size:24px;font-weight:700;color:white;line-height:1.2"></div>
+      <div id="isu-sub" style="font-size:13.5px;color:rgba(255,255,255,0.6);margin-top:7px;line-height:1.5"></div>
+    </div>
+
+    <!-- Step indicator -->
+    <div id="isu-steps" style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:28px"></div>
+
+    <!-- Card -->
+    <div style="background:white;border-radius:16px;padding:30px 28px;box-shadow:0 24px 64px rgba(0,0,0,0.4)">
+      <div id="isu-step-title" style="font-size:15px;font-weight:700;color:var(--g800);margin-bottom:18px"></div>
+      <div id="isu-fields" style="display:grid;gap:14px"></div>
+      <div id="isu-error" style="display:none;background:#FEE2E2;border:1px solid #FECACA;color:#B91C1C;border-radius:8px;padding:10px 13px;font-size:12.5px;margin-top:14px;line-height:1.5"></div>
+      <div style="display:flex;gap:10px;margin-top:22px" id="isu-actions"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:18px;font-size:12px;color:rgba(255,255,255,0.4)">
+      Already have an account? <span onclick="window.location.href='/'" style="color:#60A5FA;cursor:pointer;text-decoration:underline">Sign in</span>
+    </div>
   </div>
 </div>
 
@@ -6637,19 +6655,28 @@ const InviteActivityLog = {
     : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--g400);font-size:13px">No invite records found</td></tr>`;
   },
 
-  resend(email, type, label){
-    const base = location.origin + location.pathname;
+  async resend(email, type, label){
+    const base  = location.origin + location.pathname.replace(/\/index\.html$/i, '/');
     const token = Math.random().toString(36).slice(2,10).toUpperCase();
-    const now = new Date();
-    this.items.unshift({ email, type, label, token,
-      link: `${base}?invite=${type}&token=${token}`,
-      sentBy:'Super Admin',
+    const now   = new Date();
+    const link  = `${base}?invite=${type}&token=${token}`;
+    this.items.unshift({ email, type, label, token, link, sentBy:'Super Admin',
       date: now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
       time: now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
       status:'pending'
     });
     this.render();
-    alert(`Invite resent to ${email}`);
+    try {
+      const html = InviteLink._emailHTML(type, label, link);
+      const res  = await fetch('/api/send-email', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ to: email, subject: `You've been invited to join Proper Staffing as a ${label}`, html, category:'invite' })
+      });
+      const data = await res.json();
+      Modal.toast(data.ok ? `Invite resent to ${email}` : `Send failed: ${data.error||'unknown error'}`, data.ok ? 'success' : 'error');
+    } catch(e){
+      Modal.toast(`Network error — could not resend to ${email}`, 'error');
+    }
   },
 
   copyLink(link, token, type){
@@ -7042,37 +7069,119 @@ const InviteLink = {
     if(lbl) lbl.textContent = `${document.querySelectorAll('[id^="il-email-"]').length} recipient row${document.querySelectorAll('[id^="il-email-"]').length===1?'':'s'} · ${emails.length} email${emails.length===1?'':'s'} entered`;
   },
 
-  generate(){
+  _emailHTML(type, label, link){
+    const roleDesc = {
+      para:     "You’ve been selected to join our network of caregiving professionals. Click the button below to set up your account and get started.",
+      facility: "Your organization has been invited to partner with Proper Staffing. Click the button below to create your facility account.",
+      admin:    "You’ve been invited to join the Proper Staffing operations team. Click below to set up your admin account — a super admin will assign your permissions after signup."
+    }[type] || '';
+    const btnLabel = 'Accept invite &amp; create account';
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%">
+
+      <!-- Header -->
+      <tr><td style="background:#0B1E3D;border-radius:12px 12px 0 0;padding:28px 36px;text-align:center">
+        <span style="font-size:22px;font-weight:700;color:white;letter-spacing:-0.3px">Proper<span style="color:#60A5FA">Staffing</span></span>
+        <div style="display:inline-block;margin-left:12px;background:rgba(255,255,255,0.12);border-radius:20px;padding:3px 12px;font-size:12px;color:rgba(255,255,255,0.75);font-weight:600;vertical-align:middle">${label}</div>
+      </td></tr>
+
+      <!-- Body -->
+      <tr><td style="background:#ffffff;padding:36px 36px 28px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb">
+        <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;color:#0B1E3D;line-height:1.3">You've been invited</h1>
+        <p style="margin:0 0 24px;font-size:15px;color:#4B5563;line-height:1.6">${roleDesc}</p>
+
+        <!-- CTA Button -->
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 28px">
+          <tr><td style="border-radius:10px;background:linear-gradient(135deg,#1d4ed8,#2563EB)">
+            <a href="${link}" target="_blank"
+              style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;letter-spacing:0.1px">${btnLabel}</a>
+          </td></tr>
+        </table>
+
+        <p style="margin:0 0 8px;font-size:13px;color:#6B7280">Or copy and paste this link into your browser:</p>
+        <p style="margin:0 0 24px;font-size:12px;color:#2563EB;word-break:break-all">${link}</p>
+
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px">
+        <p style="margin:0;font-size:12px;color:#9CA3AF;line-height:1.6">This invite link expires in 7 days. If you weren't expecting this invitation, you can safely ignore this email. Questions? Reply to this email or contact <a href="mailto:support@properstaffing.com" style="color:#2563EB">support@properstaffing.com</a>.</p>
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td style="background:#F9FAFB;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:16px 36px;text-align:center">
+        <p style="margin:0;font-size:11px;color:#9CA3AF">© 2025 Proper Staffing · Precision Staffing, Delivered</p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+  },
+
+  async generate(){
     const type = document.querySelector('input[name="invite-type"]:checked')?.value || 'para';
     const inputs = [...document.querySelectorAll('[id^="il-email-"]')];
     const emails = inputs.map(i=>i.value.trim()).filter(v=>v && v.includes('@'));
     const invalid = inputs.map(i=>i.value.trim()).filter(v=>v && !v.includes('@'));
-    if(!emails.length){ alert('Please enter at least one valid email address.'); return; }
-    if(invalid.length){ alert(`These don't look like valid emails:\n${invalid.join('\n')}`); return; }
+    if(!emails.length){ Modal.toast('Please enter at least one valid email address.','error'); return; }
+    if(invalid.length){ Modal.toast(`Invalid email: ${invalid[0]}`,'error'); return; }
 
-    const base = location.origin + location.pathname;
+    // Build base URL — strip trailing /index.html so invite links are clean
+    const base = location.origin + location.pathname.replace(/\/index\.html$/i, '/');
     const labelMap = {para:'Paraprofessional', facility:'Facility', admin:'Admin'};
     const label = labelMap[type];
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
-    emails.forEach(email => {
-      const token = Math.random().toString(36).slice(2,10).toUpperCase();
-      const link = `${base}?invite=${type}&token=${token}`;
-      InviteActivityLog.add({ email, type, label, token, link, sentBy:'Super Admin', date:dateStr, time:timeStr, status:'pending' });
-    });
+    // Disable send button while in flight
+    const sendBtn = document.querySelector('#modal-foot button.btn-primary');
+    if(sendBtn){ sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; }
 
-    ActivityLog.add('Invite', `${emails.length} invite link${emails.length>1?'s':''} sent`, `Role: ${label}`, 'Super Admin');
-    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:`${emails.length} invite${emails.length>1?'s':''} sent`,
-      text:`${label} invite${emails.length>1?'s':''} sent to ${emails.length} recipient${emails.length>1?'s':''}.`,
+    const results = await Promise.all(emails.map(async email => {
+      const token = Math.random().toString(36).slice(2,10).toUpperCase();
+      const link  = `${base}?invite=${type}&token=${token}`;
+      const html  = this._emailHTML(type, label, link);
+      try {
+        const res  = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            to: email,
+            subject: `You've been invited to join Proper Staffing as a ${label}`,
+            html,
+            category: 'invite'
+          })
+        });
+        const data = await res.json();
+        const ok   = !!data.ok;
+        InviteActivityLog.add({ email, type, label, token, link, sentBy:'Super Admin', date:dateStr, time:timeStr, status: ok ? 'pending' : 'error' });
+        return { email, ok, error: data.error };
+      } catch(e){
+        InviteActivityLog.add({ email, type, label, token, link, sentBy:'Super Admin', date:dateStr, time:timeStr, status:'error' });
+        return { email, ok: false, error: 'Network error' };
+      }
+    }));
+
+    if(sendBtn){ sendBtn.disabled = false; sendBtn.textContent = 'Send all invites'; }
+
+    const sent   = results.filter(r=>r.ok).length;
+    const failed = results.filter(r=>!r.ok);
+
+    ActivityLog.add('Invite', `${sent} invite link${sent!==1?'s':''} sent`, `Role: ${label}`, 'Super Admin');
+    NotificationBell.push('admin', {ic:'blue', icon:'&#128231;', title:`${sent} invite${sent!==1?'s':''} sent`,
+      text:`${label} invite${sent!==1?'s':''} sent to ${sent} recipient${sent!==1?'s':''}.`,
       cta:'View log', action:()=>App.setPage('admin-invite-log')});
 
     const foot = document.getElementById('dm-foot');
-    if(foot) foot.innerHTML = `
-      <div style="font-size:12.5px;color:var(--green);font-weight:600">&#10003; ${emails.length} invite email${emails.length>1?'s':''} sent successfully</div>
-      <button class="btn btn-ghost btn-sm" onclick="Modal.close();App.setPage('admin-invite-log')">View invite log</button>
-      <button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
+    if(foot) foot.innerHTML =
+      `<div style="font-size:12.5px;color:${failed.length?'var(--amber)':'var(--green)'};font-weight:600">` +
+        (sent ? `&#10003; ${sent} invite email${sent!==1?'s':''} sent` : '') +
+        (failed.length ? ` &nbsp;&#9888; ${failed.length} failed` : '') +
+      `</div>` +
+      `<button class="btn btn-ghost btn-sm" onclick="Modal.close();App.setPage('admin-invite-log')">View invite log</button>` +
+      `<button class="btn btn-secondary btn-sm" onclick="Modal.close()">Done</button>`;
   },
 
   copyLink(){
@@ -7081,107 +7190,270 @@ const InviteLink = {
     else alert('Copy: ' + val);
   },
 
-  // Called on page load when ?invite= params detected
-  initSignupPage(type){
-    this._type = type;
-    // Hide all normal UI
-    document.getElementById('sb-admin')?.classList.remove('active');
-    document.getElementById('sb-para')?.classList.remove('active');
-    document.getElementById('sb-facility')?.classList.remove('active');
-    document.querySelector('.role-bar')?.style && (document.querySelector('.role-bar').style.display = 'none');
-    document.querySelector('.mobile-nav') && (document.querySelector('.mobile-nav').style.display = 'none');
-    document.querySelector('.app').style.paddingTop = '0';
-    document.querySelector('.layout').style.height = '100vh';
+  // ── Multi-step Create Account flow ──────────────────────────────────────────
+  _step: 1,
+  _stepData: {},
 
-    const page = document.getElementById('invite-signup');
-    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-    page.style.display = 'block';
-
-    const titleMap = {
-      para:     "You've been invited as a Paraprofessional",
-      facility: "You've been invited as a Facility",
-      admin:    "You've been invited as an Admin"
-    };
-    const subMap = {
-      para:     "Create your caregiver account — you'll be reviewed before your first shift.",
-      facility: "Create your facility account — you'll be reviewed before posting shifts.",
-      admin:    "Create your Proper Staffing admin account. A Super Admin will review and set your permissions."
-    };
-    document.getElementById('invite-signup-title').textContent = titleMap[type] || titleMap.para;
-    document.getElementById('invite-signup-sub').textContent   = subMap[type]  || subMap.para;
-
-    const inp = (id, lbl, type2, ph) => `<div><label class="form-label">${lbl}</label><input id="${id}" type="${type2}" placeholder="${ph}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px"></div>`;
-    const fields = document.getElementById('invite-signup-fields');
-
-    if(type === 'para'){
-      fields.innerHTML = `<div style="display:grid;gap:14px">
-        ${inp('su-name','Full name','text','Maya Rodriguez')}
-        ${inp('su-email','Email address','email','you@example.com')}
-        ${inp('su-phone','Phone number','tel','(415) 555-0100')}
-        ${inp('su-city','City','text','San Jose, CA')}
-        <div><label class="form-label">Primary credential</label>
-          <select id="su-cred" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
-            <option>CNA — Certified Nursing Assistant</option><option>HHA — Home Health Aide</option>
-            <option>PCA — Personal Care Aide</option><option>DSP — Direct Support Professional</option>
-            <option>CMA — Certified Medication Aide</option>
-          </select>
-        </div>
-        ${inp('su-pass','Password','password','Create a password')}
-        ${inp('su-pass2','Confirm password','password','Repeat password')}
-      </div>`;
-    } else if(type === 'facility'){
-      fields.innerHTML = `<div style="display:grid;gap:14px">
-        ${inp('su-name','Organization name','text','Riverbend Skilled Nursing')}
-        ${inp('su-email','Contact email','email','admin@facility.com')}
-        ${inp('su-phone','Phone number','tel','(408) 555-0100')}
-        ${inp('su-city','City','text','Santa Clara, CA')}
-        ${inp('su-license','Business license number','text','CA-BL-000000')}
-        ${inp('su-ein','EIN (Employer ID Number)','text','XX-XXXXXXX')}
-        ${inp('su-pass','Password','password','Create a password')}
-        ${inp('su-pass2','Confirm password','password','Repeat password')}
-      </div>`;
-    } else {
-      // Admin signup
-      fields.innerHTML = `<div style="display:grid;gap:14px">
-        ${inp('su-name','Full name','text','e.g. Jordan Smith')}
-        ${inp('su-email','Work email','email','you@properstaffing.com')}
-        ${inp('su-phone','Phone number','tel','(415) 555-0100')}
-        <div><label class="form-label">Job title</label>
-          <select id="su-title" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;font-size:13px;background:white">
-            <option>Operations Admin</option><option>Support Admin</option>
-            <option>Compliance Admin</option><option>Finance Admin</option>
-          </select>
-        </div>
-        ${inp('su-pass','Password','password','Create a password')}
-        ${inp('su-pass2','Confirm password','password','Repeat password')}
-      </div>`;
+  _cfg: {
+    para: {
+      badge: 'Paraprofessional',
+      title: "Create your caregiver account",
+      sub:   "You've been invited to join Proper Staffing as a caregiver. Complete the steps below to get started.",
+      steps: ['Your info','Credential','Password'],
+      stepTitles: ['Tell us about yourself','Your primary credential','Create a password'],
+    },
+    facility: {
+      badge: 'Facility',
+      title: "Create your facility account",
+      sub:   "You've been invited to set up your organization on Proper Staffing. Fill in your details to begin.",
+      steps: ['Organization','Business info','Password'],
+      stepTitles: ['Organization details','Business & licensing','Create a password'],
+    },
+    admin: {
+      badge: 'Admin Staff',
+      title: "Create your admin account",
+      sub:   "You've been invited to join the Proper Staffing operations team. A super admin will review your access after signup.",
+      steps: ['Your info','Role','Password'],
+      stepTitles: ['Tell us about yourself','Your role','Create a password'],
     }
   },
 
-  submitSignup(){
-    const get = id => (document.getElementById(id)?.value||'').trim();
+  _inp(id, lbl, type2, ph, hint){
+    return `<div><label style="font-size:12.5px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px">${lbl}</label>
+      <input id="${id}" type="${type2}" placeholder="${ph}" autocomplete="off"
+        style="width:100%;box-sizing:border-box;padding:10px 13px;border:1.5px solid var(--g200);border-radius:9px;font-size:13.5px;transition:border-color 0.15s"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--g200)'">
+      ${hint ? `<div style="font-size:11px;color:var(--g400);margin-top:4px">${hint}</div>` : ''}</div>`;
+  },
+
+  _sel(id, lbl, opts){
+    return `<div><label style="font-size:12.5px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px">${lbl}</label>
+      <select id="${id}" style="width:100%;box-sizing:border-box;padding:10px 13px;border:1.5px solid var(--g200);border-radius:9px;font-size:13.5px;background:white;appearance:auto">
+        ${opts.map(o => `<option>${o}</option>`).join('')}
+      </select></div>`;
+  },
+
+  _passRow(id, lbl, ph){
+    return `<div><label style="font-size:12.5px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px">${lbl}</label>
+      <div style="position:relative">
+        <input id="${id}" type="password" placeholder="${ph}" autocomplete="new-password"
+          style="width:100%;box-sizing:border-box;padding:10px 40px 10px 13px;border:1.5px solid var(--g200);border-radius:9px;font-size:13.5px;transition:border-color 0.15s"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--g200)'">
+        <button type="button" onclick="Sensitive.toggleInput('${id}',this)"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:12px;color:var(--g500);font-weight:600">Show</button>
+      </div></div>`;
+  },
+
+  _renderStepDots(steps, current){
+    const el = document.getElementById('isu-steps');
+    if(!el) return;
+    el.innerHTML = steps.map((s,i) => {
+      const done    = i < current - 1;
+      const active  = i === current - 1;
+      const dotClr  = done ? '#16A34A' : active ? '#2563EB' : 'rgba(255,255,255,0.3)';
+      const txtClr  = done || active ? 'white' : 'rgba(255,255,255,0.5)';
+      const lineClr = i < steps.length - 1 ? (done ? '#16A34A' : 'rgba(255,255,255,0.2)') : null;
+      return `<div style="display:flex;align-items:center;gap:0">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${dotClr};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;transition:background 0.2s">
+            ${done ? '&#10003;' : i+1}</div>
+          <span style="font-size:10px;font-weight:600;color:${txtClr};white-space:nowrap">${s}</span>
+        </div>
+        ${lineClr ? `<div style="width:40px;height:2px;background:${lineClr};margin:0 4px;margin-bottom:16px;transition:background 0.2s"></div>` : ''}
+      </div>`;
+    }).join('');
+  },
+
+  _renderStep(){
+    const type = this._type;
+    const cfg  = this._cfg[type] || this._cfg.para;
+    const step = this._step;
+    const inp  = this._inp.bind(this);
+    const sel  = this._sel.bind(this);
+    const pr   = this._passRow.bind(this);
+    const D    = this._stepData;
+
+    this._renderStepDots(cfg.steps, step);
+    document.getElementById('isu-step-title').textContent = cfg.stepTitles[step-1] || '';
+    document.getElementById('isu-error').style.display = 'none';
+
+    let html = '';
+    if(type === 'para'){
+      if(step === 1) html = inp('su-name','Full legal name','text','Jane Smith') + inp('su-email','Email address','email','you@example.com') + inp('su-phone','Phone number','tel','(415) 555-0100') + inp('su-city','City / State','text','San Jose, CA');
+      if(step === 2) html = sel('su-cred','Primary credential',['CNA — Certified Nursing Assistant','HHA — Home Health Aide','PCA — Personal Care Aide','DSP — Direct Support Professional','CMA — Certified Medication Aide']) + inp('su-cert-exp','Credential expiration date (optional)','date','');
+      if(step === 3) html = pr('su-pass','Create a password','Minimum 8 characters') + pr('su-pass2','Confirm password','Must match above') + `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 13px;font-size:12px;color:#1E40AF;line-height:1.5">After submitting, your account will be reviewed by a Proper Staffing admin before you can sign in.</div>`;
+    } else if(type === 'facility'){
+      if(step === 1) html = inp('su-name','Organization name','text','Riverbend Skilled Nursing') + inp('su-email','Contact email','email','admin@yourofacility.com') + inp('su-phone','Main phone number','tel','(408) 555-0100') + inp('su-city','City / State','text','Santa Clara, CA');
+      if(step === 2) html = inp('su-license','Business license number','text','CA-BL-000000') + inp('su-ein','EIN (Employer ID Number)','password','XX-XXXXXXX','This is stored securely and never displayed in full.');
+      if(step === 3) html = pr('su-pass','Create a password','Minimum 8 characters') + pr('su-pass2','Confirm password','Must match above') + `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 13px;font-size:12px;color:#1E40AF;line-height:1.5">After submitting, your account will be reviewed by a Proper Staffing admin before you can start posting shifts.</div>`;
+    } else {
+      if(step === 1) html = inp('su-name','Full name','text','Jordan Smith') + inp('su-email','Work email','email','you@properstaffing.com') + inp('su-phone','Phone number','tel','(415) 555-0100');
+      if(step === 2) html = sel('su-title','Job title',['Operations Admin','Support Admin','Compliance Admin','Finance Admin']);
+      if(step === 3) html = pr('su-pass','Create a password','Minimum 8 characters') + pr('su-pass2','Confirm password','Must match above') + `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 13px;font-size:12px;color:#1E40AF;line-height:1.5">A super admin will review and assign your permissions before your account becomes active.</div>`;
+    }
+
+    document.getElementById('isu-fields').innerHTML = html;
+
+    // Restore saved values
+    Object.entries(D).forEach(([id,val]) => {
+      const el = document.getElementById(id);
+      if(el) el.value = val;
+    });
+
+    // Actions
+    const actEl = document.getElementById('isu-actions');
+    const total  = cfg.steps.length;
+    const isLast = step === total;
+    actEl.innerHTML = (step > 1 ? `<button class="btn btn-secondary" style="flex:1" onclick="InviteLink._back()">&#8592; Back</button>` : '') +
+      (isLast
+        ? `<button class="btn btn-primary" style="flex:2" id="isu-submit-btn" onclick="InviteLink.submitSignup()">Create account &#8594;</button>`
+        : `<button class="btn btn-primary" style="flex:2" onclick="InviteLink._next()">${step === total-1 ? 'Almost done &#8594;' : 'Continue &#8594;'}</button>`
+      );
+  },
+
+  _collectStep(){
+    const ids = [...document.getElementById('isu-fields').querySelectorAll('input,select')].map(e=>e.id);
+    ids.forEach(id => { const v = document.getElementById(id)?.value; if(v !== undefined) this._stepData[id] = v; });
+  },
+
+  _showError(msg){
+    const el = document.getElementById('isu-error');
+    if(el){ el.textContent = msg; el.style.display = 'block'; }
+  },
+
+  _validateStep(){
+    const type = this._type;
+    const step = this._step;
+    const get  = id => (document.getElementById(id)?.value||'').trim();
+    if(type === 'para'){
+      if(step === 1){
+        if(!get('su-name')) return 'Please enter your full name.';
+        if(!get('su-email') || !get('su-email').includes('@')) return 'Please enter a valid email address.';
+        if(!get('su-phone')) return 'Please enter your phone number.';
+      }
+      if(step === 3){
+        if(!get('su-pass')) return 'Please create a password.';
+        if(get('su-pass').length < 8) return 'Password must be at least 8 characters.';
+        if(get('su-pass') !== get('su-pass2')) return 'Passwords do not match.';
+      }
+    } else if(type === 'facility'){
+      if(step === 1){
+        if(!get('su-name')) return 'Please enter your organization name.';
+        if(!get('su-email') || !get('su-email').includes('@')) return 'Please enter a valid contact email.';
+        if(!get('su-phone')) return 'Please enter a phone number.';
+      }
+      if(step === 2){
+        if(!get('su-license')) return 'Please enter your business license number.';
+        if(!get('su-ein')) return 'Please enter your EIN.';
+      }
+      if(step === 3){
+        if(!get('su-pass')) return 'Please create a password.';
+        if(get('su-pass').length < 8) return 'Password must be at least 8 characters.';
+        if(get('su-pass') !== get('su-pass2')) return 'Passwords do not match.';
+      }
+    } else {
+      if(step === 1){
+        if(!get('su-name')) return 'Please enter your full name.';
+        if(!get('su-email') || !get('su-email').includes('@')) return 'Please enter a valid work email.';
+      }
+      if(step === 3){
+        if(!get('su-pass')) return 'Please create a password.';
+        if(get('su-pass').length < 8) return 'Password must be at least 8 characters.';
+        if(get('su-pass') !== get('su-pass2')) return 'Passwords do not match.';
+      }
+    }
+    return null;
+  },
+
+  _next(){
+    const err = this._validateStep();
+    if(err){ this._showError(err); return; }
+    this._collectStep();
+    this._step++;
+    this._renderStep();
+  },
+
+  _back(){
+    this._collectStep();
+    this._step--;
+    this._renderStep();
+  },
+
+  // Called on page load when ?invite= params detected
+  initSignupPage(type){
+    this._type     = type || 'para';
+    this._step     = 1;
+    this._stepData = {};
+
+    // Hide all normal app UI
+    document.getElementById('login-gate')?.style && (document.getElementById('login-gate').style.display = 'none');
+    document.querySelector('.role-bar')?.style && (document.querySelector('.role-bar').style.display = 'none');
+    document.querySelector('.mobile-nav') && (document.querySelector('.mobile-nav').style.display = 'none');
+    document.querySelectorAll('.sidebar').forEach(s => s.style.display = 'none');
+    const app = document.querySelector('.app');
+    if(app) app.style.paddingTop = '0';
+    const layout = document.querySelector('.layout');
+    if(layout){ layout.style.display = 'flex'; layout.style.alignItems = 'flex-start'; layout.style.background = 'none'; }
+
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    const page = document.getElementById('invite-signup');
+    page.style.cssText = 'display:flex;min-height:100vh;background:linear-gradient(135deg,#0B1E3D 0%,#13294f 55%,#1a3866 100%);align-items:flex-start;justify-content:center;padding:40px 16px 60px;overflow-y:auto;width:100%;box-sizing:border-box';
+
+    const cfg = this._cfg[type] || this._cfg.para;
+    const badgeMap = {para:'&#128203; Paraprofessional', facility:'&#127970; Facility', admin:'&#128272; Admin Staff'};
+    document.getElementById('isu-role-badge').innerHTML = badgeMap[type] || badgeMap.para;
+    document.getElementById('isu-title').textContent    = cfg.title;
+    document.getElementById('isu-sub').textContent      = cfg.sub;
+
+    this._renderStep();
+  },
+
+  async submitSignup(){
+    const err = this._validateStep();
+    if(err){ this._showError(err); return; }
+    this._collectStep();
+
+    const D    = this._stepData;
+    const type = this._type;
+    const get  = id => (D[id]||'').trim();
     const name  = get('su-name');
     const email = get('su-email');
     const pass  = get('su-pass');
-    const pass2 = get('su-pass2');
-    if(!name || !email || !pass){ alert('Please fill in all required fields.'); return; }
-    if(pass !== pass2){ alert('Passwords do not match.'); return; }
 
-    const type = this._type;
+    const btn = document.getElementById('isu-submit-btn');
+    if(btn){ btn.disabled = true; btn.textContent = 'Creating account…'; }
+
+    try {
+      const res  = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name, email, password: pass, role: type })
+      });
+      const data = await res.json();
+
+      if(!data.ok){
+        this._showError(data.error || 'Something went wrong. Please try again.');
+        if(btn){ btn.disabled = false; btn.textContent = 'Create account →'; }
+        return;
+      }
+    } catch(e){
+      // Prototype fallback — no real backend in dev preview
+    }
+
+    // Register with in-memory data for prototype
     const newId = Date.now();
-
     if(type === 'admin'){
-      const title = document.getElementById('su-title')?.value || 'Operations Admin';
+      const title = get('su-title') || 'Operations Admin';
       const phone = get('su-phone');
       AdminInvites.addPending({id: newId, name, email, phone, title, submitted: 'Just now'});
       NotificationBell.push('admin', {ic:'blue', icon:'&#128272;', title:'Admin signup: '+name,
         text:`${title} account submitted via invite. Pending permission review.`,
         cta:'Review', action:()=>{ App.setRole('admin'); App.setPage('admin-users'); }});
     } else {
-      const phone = get('su-phone');
-      const city  = get('su-city') || '—';
-      const isPara = type === 'para';
-      const cred    = isPara ? (document.getElementById('su-cred')?.value||'CNA').split('—')[0].trim() : null;
+      const phone   = get('su-phone');
+      const city    = get('su-city') || '—';
+      const isPara  = type === 'para';
+      const cred    = isPara ? (get('su-cred')||'CNA').split('—')[0].trim() : null;
       const license = !isPara ? get('su-license') : null;
       const ein     = !isPara ? get('su-ein') : null;
       const entry = {
@@ -7203,15 +7475,19 @@ const InviteLink = {
         cta:'Review', action:()=>{ App.setRole('admin'); AdminQueue.openReview(newId); }});
     }
 
+    // Success screen
     const page = document.getElementById('invite-signup');
     page.innerHTML = `
-      <div style="text-align:center;padding:60px 20px">
-        <div style="font-size:48px;margin-bottom:16px">&#10003;</div>
-        <div style="font-size:22px;font-weight:700;color:var(--navy);margin-bottom:8px">Account submitted!</div>
-        <div style="font-size:14px;color:var(--g500);max-width:360px;margin:0 auto">${type === 'admin'
-          ? 'Your admin account is pending approval. A Super Admin will review your access and notify you by email.'
-          : 'Your account is pending review by the Proper Staffing team. You\'ll receive an email once you\'re approved and can sign in.'
-        }</div>
+      <div style="width:100%;max-width:480px;text-align:center">
+        <div style="width:72px;height:72px;background:rgba(22,163,74,0.15);border:2px solid rgba(22,163,74,0.4);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:30px">&#10003;</div>
+        <div style="font-size:24px;font-weight:700;color:white;margin-bottom:10px">You're all set!</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.65);max-width:340px;margin:0 auto 32px;line-height:1.6">
+          ${type === 'admin'
+            ? 'Your admin account is pending approval. A super admin will review your access and notify you by email when you can sign in.'
+            : 'Your account has been submitted for review. The Proper Staffing team will verify your information and send you an email when you\'re approved to sign in.'}
+        </div>
+        <button class="btn btn-primary" style="padding:12px 32px;font-size:14px" onclick="window.location.href='/'">Go to sign in &#8594;</button>
+        <div style="margin-top:16px;font-size:12px;color:rgba(255,255,255,0.35)">Questions? Contact support@properstaffing.com</div>
       </div>`;
   }
 };
@@ -7281,7 +7557,7 @@ const Sensitive = {
 (function(){
   const params = new URLSearchParams(location.search);
   const inviteType = params.get('invite');
-  if(inviteType === 'para' || inviteType === 'facility'){
+  if(inviteType === 'para' || inviteType === 'facility' || inviteType === 'admin'){
     InviteLink.initSignupPage(inviteType);
   } else {
     // App opens on the login gate — no role is active until the user signs in.
