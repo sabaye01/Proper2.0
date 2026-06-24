@@ -1346,7 +1346,7 @@
   <div class="settings-section">
     <div class="settings-section-head"><div class="settings-section-title">&#128100; Personal &amp; contact</div></div>
     <div class="form-row"><div class="form-group"><label class="form-label">First name</label><input class="form-input" id="para-first-input" value="Maya"/></div><div class="form-group"><label class="form-label">Last name</label><input class="form-input" id="para-last-input" value="Rodriguez"/></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" value="maya.r@example.com"/></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="(415) 555-0182"/></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="para-email-input" value="maya.r@example.com"/></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="para-phone-input" value="(415) 555-0182"/></div></div>
     <div class="form-group"><label class="form-label">Date of birth</label><div class="sf-display"><span class="sf-lock">&#128274;</span><span id="para-dob-display">••/••/••••</span><button class="sf-reveal" onclick="Sensitive.revealField('para-dob-display','03/14/1992',this)">Reveal</button></div><div class="sf-note">&#128274; Hidden for your privacy — only you and verified admins can view this</div></div>
     <button class="btn btn-primary btn-sm" onclick="ProfileState.savePara()">Save contact info</button>
   </div>
@@ -1581,6 +1581,7 @@
   <div class="page-head"><div><div class="page-title">Facility info</div><div class="page-sub">Your organization and all of its sites.</div></div></div>
   <div class="card" style="max-width:600px">
     <div class="form-group"><label class="form-label">Organization name</label><input class="form-input" id="fac-name-input" value="Sunny Care Group"/></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Contact email</label><input class="form-input" id="fac-email-input" value="admin@sunnycare.com"/></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="fac-phone-input" value="(408) 555-0100"/></div></div>
     <div class="form-row"><div class="form-group"><label class="form-label">EIN</label><div class="sf-display"><span class="sf-lock">&#128274;</span><span id="fac-ein-display">••-•••4567</span><button class="sf-reveal" onclick="Sensitive.revealField('fac-ein-display','86-1234567',this)">Reveal</button></div><div class="sf-note">&#128274; Full number hidden for security</div></div><div class="form-group"><label class="form-label">Type</label><input class="form-input" value="Multi-site care group"/></div></div>
     <div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-primary" onclick="ProfileState.saveFacility()">Save changes</button></div>
   </div>
@@ -2517,6 +2518,34 @@ const App = {
       // Success — enter the app
       this.loggedInRole = role;
       this._currentUser = data.user;
+
+      // Detect demo vs real user and initialize profile accordingly
+      const _DEMO_EMAILS = ['maya@properstaffing.com','sarah@properstaffing.com','admin@properstaffing.com'];
+      this._demoMode = _DEMO_EMAILS.includes(email);
+      if(!this._demoMode){
+        const uName = data.user?.name || '';
+        if(role === 'para'){
+          const parts = uName.split(' ');
+          ProfileState.para.firstName = parts[0] || uName;
+          ProfileState.para.lastName  = parts.slice(1).join(' ') || '';
+          ProfileState.para.email     = data.user?.email || email;
+          ProfileState.para.phone     = data.user?.phone || '';
+          App.paraName    = uName;
+          App.paraVerified = false;
+          // Clear Maya's demo earnings — new user starts with a blank slate
+          Earnings.current = { label:'Current period', payDate:'Pending — no pay schedule on file yet', shifts:[] };
+          Earnings.history = [];
+        }
+        if(role === 'facility'){
+          ProfileState.facility.name  = uName;
+          ProfileState.facility.email = data.user?.email || email;
+          ProfileState.facility.phone = data.user?.phone || '';
+          // Clear demo facility jobs — new facility starts with no postings
+          FacilityJobs.jobs    = [];
+          FacilityJobs._nextId = 1;
+        }
+      }
+
       document.getElementById('login-gate').classList.add('hidden');
       const btns = document.getElementById('role-btns');
       if(btns) btns.style.display = 'none';
@@ -2636,6 +2665,8 @@ const App = {
     document.querySelectorAll('.sidebar').forEach(s => s.classList.toggle('active', s.dataset.role === role));
     const firstPage = role === 'admin' ? 'admin-dashboard' : (role === 'para' ? 'para-jobs' : 'fac-manage-jobs');
     this.setPage(firstPage);
+    if(role === 'para')     ProfileState._propagatePara();
+    if(role === 'facility') ProfileState._propagateFacility();
   },
 
   setPage(page){
@@ -4333,7 +4364,6 @@ const ProfileState = {
   _propagatePara(){
     const full     = this.para.firstName + (this.para.lastName ? ' '+this.para.lastName : '');
     const initials = ((this.para.firstName[0]||'')+(this.para.lastName[0]||'')).toUpperCase();
-    const first    = this.para.firstName;
     // Sidebar
     const sn = document.getElementById('para-sidebar-name');
     if(sn) sn.textContent = full;
@@ -4344,10 +4374,15 @@ const ProfileState = {
     if(pn) pn.textContent = full;
     const pi = document.getElementById('para-profile-initials');
     if(pi) pi.textContent = initials;
-    // Earnings hero sub (first name reference)
-    document.querySelectorAll('.earn-hero-sub').forEach(el => {
-      if(el.textContent.includes('shift')) {} // leave numeric content
-    });
+    // Profile form inputs
+    const fi = document.getElementById('para-first-input');
+    if(fi) fi.value = this.para.firstName;
+    const li = document.getElementById('para-last-input');
+    if(li) li.value = this.para.lastName || '';
+    const ei = document.getElementById('para-email-input');
+    if(ei && this.para.email) ei.value = this.para.email;
+    const phi = document.getElementById('para-phone-input');
+    if(phi && this.para.phone) phi.value = this.para.phone;
   },
 
   saveFacility(){
@@ -4371,6 +4406,13 @@ const ProfileState = {
       if(opt.textContent === ProfileState.facility._prev) opt.textContent = name;
     });
     this.facility._prev = name;
+    // Profile form inputs
+    const ni = document.getElementById('fac-name-input');
+    if(ni) ni.value = name;
+    const ei = document.getElementById('fac-email-input');
+    if(ei && this.facility.email) ei.value = this.facility.email;
+    const phi = document.getElementById('fac-phone-input');
+    if(phi && this.facility.phone) phi.value = this.facility.phone;
   }
 };
 
@@ -4949,6 +4991,8 @@ const Professionals = {
       badge:'Professional record', title:p.name, sub:`${p.role} · ${p.rating?p.rating.toFixed(1)+' \u2605 from facilities':'unrated'}`, wide:true,
       bodyHTML:`
         <dl class="dm-kv">
+          ${p.email ? `<dt>Email</dt><dd>${p.email}</dd>` : ''}
+          ${p.phone ? `<dt>Phone</dt><dd>${p.phone}</dd>` : ''}
           <dt>Date of birth</dt><dd>••/••/••••&nbsp;<button style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600;padding:0" onclick="Sensitive.revealInline(this,'${p.dob}')">Reveal</button></dd>
           <dt>Schedule</dt><dd>${p.schedule}</dd>
           <dt>Facility rating</dt><dd>${p.rating ? p.rating.toFixed(1)+' \u2605' : 'Not yet rated'}</dd>
